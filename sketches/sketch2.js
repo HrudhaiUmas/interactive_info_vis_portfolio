@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #12: Remove bottom artifact + simplify top + make flame flicker tied to seconds
+// Commit #16: Anchor flame to wick tip + keep 1 sway/second + restore clean legend text
 
 registerSketch('sk2', function (p) {
 
@@ -23,6 +23,9 @@ registerSketch('sk2', function (p) {
     let m = p.minute();
     let s = p.second();
 
+    // Smooth fraction within the current second (0..1)
+    let secondFraction = (p.millis() % 1000) / 1000;
+
     // 0–11 hour index for pins + hour-progress
     let hourIndex = h24 % 12;
 
@@ -31,7 +34,7 @@ registerSketch('sk2', function (p) {
     if (h12 === 0) h12 = 12;
 
     // Smooth minute progress within the current hour (0..1)
-    let minuteProgress = (m + s / 60) / 60;
+    let minuteProgress = (m + (s + secondFraction) / 60) / 60;
 
     // Hour progress across a 12-hour candle (0..1)
     let hourProgress = (hourIndex + minuteProgress) / 12;
@@ -44,6 +47,11 @@ registerSketch('sk2', function (p) {
     let timeText = pad2(h12) + ":" + pad2(m) + ":" + pad2(s);
     p.textSize(18);
     p.text("Time: " + timeText, 20, 60);
+
+    // Note (minutes encoding)
+    p.fill(80);
+    p.textSize(14);
+    p.text("Minutes: wax drips (each drip = 5 minutes)", 20, 90);
 
     // -----------------------------
     // LAYOUT: PLATE + CANDLE ANCHORED
@@ -86,62 +94,34 @@ registerSketch('sk2', function (p) {
 
     // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
+
     // -----------------------------
-    // MELTED WAX POOL AT TOP (adds realism + clarity)
+    // MELTED WAX POOL AT TOP (3D rim matches candle width)
     // -----------------------------
+    let rimWidth = candleWidth;
+    let rimHeight = 16;
+
+    let innerRimWidth = candleWidth - 18;
+    let innerRimHeight = 10;
+
     p.noStroke();
     p.fill(228);
-    p.ellipse(cx, currentCandleTopY + 10, candleWidth - 18, 16);
+    p.ellipse(cx, currentCandleTopY + 10, rimWidth, rimHeight);
 
     p.fill(235);
-    p.ellipse(cx, currentCandleTopY + 9, candleWidth - 34, 10);
+    p.ellipse(cx, currentCandleTopY + 9, innerRimWidth, innerRimHeight);
 
     // -----------------------------
-    // MINUTE MELT LINE INSIDE CANDLE (mapped to remaining wax)
-    // -----------------------------
-    let topPadding = 12;
-    let bottomPadding = 18; // slightly larger so the line never sits near the bottom
-
-    let remainingTopY = currentCandleTopY + topPadding;
-    let remainingBottomY = candleBottomY - bottomPadding;
-
-    let minuteLineY = remainingTopY + (minuteProgress * (remainingBottomY - remainingTopY));
-
-    // draw melt line
-    p.stroke(210);
-    p.strokeWeight(3);
-    p.line(cx - candleWidth / 2 + 10, minuteLineY, cx + candleWidth / 2 - 10, minuteLineY);
-
-    // small tick at right edge
-    p.strokeWeight(2);
-    p.line(cx + candleWidth / 2 - 10, minuteLineY, cx + candleWidth / 2 - 4, minuteLineY);
-
-    // -----------------------------
-    // MINUTE DRIP COUNT (5-minute chunks) — anchored near wick/top
+    // MINUTE DRIP COUNT (5-minute chunks) ONLY
     // -----------------------------
     let dripCount = Math.floor(m / 5);
 
-    // Start drips right below the wick base (near top surface)
     let dripX = cx + candleWidth / 2 - 7;
-
-    // put the first drip very close to the wick/top edge
     let dripStartY = currentCandleTopY + 14;
-
-    // spacing down the side
     let dripSpacing = 14;
 
-    // only allow drips within the remaining wax region
     let dripMinY = currentCandleTopY + 12;
     let dripMaxY = candleBottomY - 14;
-
-    // -----------------------------
-    // CONNECTOR LINE (melt line -> drip side) for clear mapping
-    // -----------------------------
-    p.stroke(220);
-    p.strokeWeight(1);
-    let edgeX = cx + candleWidth / 2 - 10;
-    p.line(edgeX, minuteLineY, dripX - 2, minuteLineY);
-    p.noStroke();
 
     for (let i = 0; i < dripCount; i++) {
       let dripY = dripStartY + i * dripSpacing;
@@ -149,62 +129,78 @@ registerSketch('sk2', function (p) {
       if (dripY < dripMinY) dripY = dripMinY;
       if (dripY > dripMaxY) break;
 
-      // subtle wobble (stable + alive)
-      // tie wobble to seconds so it always changes as time changes,
-      // and also add a tiny frame-based component so it feels alive within the second
-      let wobble = p.sin((s * 40) + (p.frameCount * 2) + i * 35) * 0.8;
+      // subtle wobble (kept tiny so drips don't look chaotic)
+      let wobble = p.sin(((m * 60) + s + secondFraction) * 6 + i * 35) * 0.8;
 
-      // Highlight newest drip so current 5-min bucket is obvious
       let isNewest = (i === dripCount - 1);
 
       p.noStroke();
 
       if (isNewest) {
-        p.fill(200); // slightly darker
+        p.fill(200);
         p.ellipse(dripX + wobble, dripY, 10, 12);
       } else {
         p.fill(225);
         p.ellipse(dripX + wobble, dripY, 8, 10);
       }
 
-      // Drip tail
       p.fill(220);
       p.ellipse(dripX + wobble, dripY + 6, 4, 6);
     }
 
     // -----------------------------
-    // FLAME FLICKER (tied to seconds so it always changes each second)
+    // WICK (define tip so flame can be anchored to it)
     // -----------------------------
-    // t goes 0..1 within the current second (smooth animation)
-    let t = (p.millis() % 1000) / 1000;
+    let wickTopY = currentCandleTopY - 15;
+    let wickBottomY = currentCandleTopY + 10;
 
-    // A second-synced wave: each second has a new "phase", and within the second it animates smoothly
-    // This guarantees it updates with real time and still looks alive between second ticks.
-    let flickerWave = p.sin((s * 30) + (t * 360));
-    let flickerX = flickerWave * 2;
-    let outerFlameH = 26 + flickerWave * 3;
-    let outerFlameW = 18 + flickerWave * 2;
-
-    let innerWave = p.sin((s * 34) + (t * 420) + 40);
-    let innerFlameH = 14 + innerWave * 2;
-    let innerFlameW = 8 + innerWave * 1.5;
-
-    // --- WICK ---
     p.stroke(60);
     p.strokeWeight(3);
-    p.line(cx, currentCandleTopY + 10, cx, currentCandleTopY - 15);
+    p.line(cx, wickBottomY, cx, wickTopY);
+
+    // -----------------------------
+    // FLAME (1 smooth back-and-forth per second, CONNECTED to wick)
+    // -----------------------------
+    // phase goes 0 → 2π once every second
+    let phase = (s + secondFraction) * 360;
+
+    // single smooth sine wave
+    let flicker = p.sin(phase);
+
+    // horizontal sway
+    let flickerX = flicker * 4;
+
+    // size changes
+    let outerFlameH = 26 + flicker * 6;
+    let outerFlameW = 18 + flicker * 4;
+
+    let innerFlameH = 14 + flicker * 4;
+    let innerFlameW = 8 + flicker * 2.5;
+
+    // Flame base is slightly ABOVE the wick tip
+    let flameBaseY = wickTopY;
 
     // --- OUTER FLAME ---
     p.noStroke();
     p.fill(255, 170, 60);
-    p.ellipse(cx + flickerX, currentCandleTopY - 28, outerFlameW, outerFlameH);
+    p.ellipse(
+      cx + flickerX,
+      flameBaseY - outerFlameH / 2,
+      outerFlameW,
+      outerFlameH
+    );
 
     // --- INNER FLAME ---
     p.fill(255, 210, 120);
-    p.ellipse(cx + flickerX, currentCandleTopY - 25, innerFlameW, innerFlameH);
+    p.ellipse(
+      cx + flickerX,
+      flameBaseY - innerFlameH / 2,
+      innerFlameW,
+      innerFlameH
+    );
 
     // -----------------------------
-    // PINS + LABELS (hourIndex highlight)
+    // PINS + LABELS (hours)
     // -----------------------------
     let pinCount = 12;
     let pinSpacing = candleHeight / pinCount;
@@ -215,19 +211,16 @@ registerSketch('sk2', function (p) {
       let y = originalCandleTopY + i * pinSpacing;
       let x = cx + candleWidth / 2 + 14;
 
-      // Normal pin
       p.noStroke();
       p.fill(150, 0, 0);
       p.ellipse(x, y, 6, 6);
 
-      // Label (0 -> 12)
       let label = String(i);
       if (i === 0) label = "12";
 
       p.fill(90);
       p.text(label, x + 12, y - 6);
 
-      // Highlight current hour pin
       if (i === hourIndex) {
         p.noFill();
         p.stroke(255, 120, 120);
@@ -243,10 +236,16 @@ registerSketch('sk2', function (p) {
       }
     }
 
-    // --- NOTE ---
+    // -----------------------------
+    // LEGEND (kept clean + not overlapping)
+    // -----------------------------
+    let legendX = cx + candleWidth / 2 + 14;
+    let legendY = originalCandleTopY - 30;
+
+    p.noStroke();
     p.fill(80);
-    p.textSize(14);
-    p.text("Minutes: internal melt line + drip count (5-min steps)", 20, 90);
+    p.textSize(13);
+    p.text("Hours", legendX, legendY);
   };
 
   p.windowResized = function () { };
