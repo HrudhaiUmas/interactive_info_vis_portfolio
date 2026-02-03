@@ -1,5 +1,6 @@
 // Candle Clock — sketch2
-// Commit #7: Add labels to pins (12, 1..11) for readability
+// Commit #8: Candle burn height maps to hour progress (12-hour cycle)
+// Minutes/seconds still exist, but they no longer reset the candle each hour.
 
 registerSketch('sk2', function (p) {
 
@@ -23,12 +24,19 @@ registerSketch('sk2', function (p) {
     let m = p.minute();
     let s = p.second();
 
+    // 0–11 hour index for pins + hour-progress
     let hourIndex = h24 % 12;
 
+    // Debug display as 12-hr
     let h12 = hourIndex;
     if (h12 === 0) h12 = 12;
 
+    // Smooth minute progress within the current hour (0..1)
     let minuteProgress = (m + s / 60) / 60;
+
+    // Hour progress across a 12-hour candle (0..1)
+    // Example: at 1:30, hourProgress = (1 + 0.5) / 12
+    let hourProgress = (hourIndex + minuteProgress) / 12;
 
     // --- TITLE + DEBUG TIME ---
     p.fill(20);
@@ -66,8 +74,9 @@ registerSketch('sk2', function (p) {
     p.fill(235);
     p.rect(cx, candleCenterY, candleWidth, candleHeight, 22);
 
-    // --- BURN MASK (minute -> burn amount) ---
-    let burnAmount = minuteProgress * (candleHeight * 0.70);
+    // --- BURN MASK (hourProgress -> burn amount) ---
+    // Burn through 70% visually so you still see candle body at the end.
+    let burnAmount = hourProgress * (candleHeight * 0.70);
 
     p.fill(245);
     p.rect(
@@ -78,10 +87,11 @@ registerSketch('sk2', function (p) {
       22
     );
 
+    // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
 
     // -----------------------------
-    // FLAME FLICKER (seconds -> motion)
+    // FLAME FLICKER (subtle motion)
     // -----------------------------
     let flickerWave = p.sin(p.frameCount * 6);
     let flickerX = flickerWave * 2;
@@ -107,14 +117,12 @@ registerSketch('sk2', function (p) {
     p.ellipse(cx + flickerX, currentCandleTopY - 25, innerFlameW, innerFlameH);
 
     // -----------------------------
-    // PINS + LABELS
+    // PINS + LABELS (hourIndex highlight)
     // -----------------------------
     let pinCount = 12;
     let pinSpacing = candleHeight / pinCount;
 
-    // Label style
     p.textSize(12);
-    p.fill(90);
 
     for (let i = 0; i < pinCount; i++) {
       let y = originalCandleTopY + i * pinSpacing;
@@ -125,33 +133,24 @@ registerSketch('sk2', function (p) {
       p.fill(150, 0, 0);
       p.ellipse(x, y, 6, 6);
 
-      // Label mapping:
-      // i=0 -> "12"
-      // i=1 -> "1"
-      // ...
-      // i=11 -> "11"
+      // Label (0 -> 12)
       let label = String(i);
       if (i === 0) label = "12";
 
-      // Draw label slightly to the right of the pin
-      p.noStroke();
       p.fill(90);
       p.text(label, x + 12, y - 6);
 
       // Highlight current hour pin
       if (i === hourIndex) {
-        // Glow ring
         p.noFill();
         p.stroke(255, 120, 120);
         p.strokeWeight(2);
         p.ellipse(x, y, 16, 16);
 
-        // Bright center
         p.noStroke();
         p.fill(220, 0, 0);
         p.ellipse(x, y, 9, 9);
 
-        // Optional: make current label darker for emphasis
         p.fill(20);
         p.text(label, x + 12, y - 6);
       }
@@ -160,7 +159,7 @@ registerSketch('sk2', function (p) {
     // --- NOTE ---
     p.fill(80);
     p.textSize(14);
-    p.text("Next: add wax drip animation (subtle)", 20, 90);
+    p.text("Next: add minute melt line inside candle (Option A)", 20, 90);
   };
 
   p.windowResized = function () { };
