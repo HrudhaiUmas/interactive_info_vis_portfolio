@@ -22,7 +22,7 @@
       <button type="button" class="tab-btn" data-target="tab3" data-sketch="sk3" role="tab">HWK 4. B</button>
       <button type="button" class="tab-btn" data-target="tab4" data-sketch="sk4" role="tab">HWK 4. C</button>
 
-      <!-- Examples -->
+      <!-- Examples
       <button type="button" class="tab-btn" data-target="tab5" data-sketch="sk5" role="tab">Ex 1</button>
       <button type="button" class="tab-btn" data-target="tab6" data-sketch="sk6" role="tab">Ex 2</button>
       <button type="button" class="tab-btn" data-target="tab7" data-sketch="sk7" role="tab">Ex 3</button>
@@ -32,7 +32,7 @@
       <button type="button" class="tab-btn" data-target="tab11" data-sketch="sk11" role="tab">Ex 7</button>
       <button type="button" class="tab-btn" data-target="tab12" data-sketch="sk12" role="tab">Ex 8</button>
       <button type="button" class="tab-btn" data-target="tab13" data-sketch="sk13" role="tab">Ex 9</button>
-      <button type="button" class="tab-btn" data-target="tab14" data-sketch="sk14" role="tab">Ex 10</button>
+      <button type="button" class="tab-btn" data-target="tab14" data-sketch="sk14" role="tab">Ex 10</button> -->
     </nav>
 
     <!-- Lab 1: Homepage -->
@@ -54,19 +54,23 @@
       <div id="sketch-drawing-sk2" class="sketch-evolution">
         <!-- Project narrative template: replace the text below with your own narrative -->
         <div class="sketch-narrative" aria-labelledby="sk2-narrative-title">
-          <h3 id="sk2-narrative-title">Sketch narrative (replace this and add to the other two sketches!)</h3>
-          <p class="small-note">Replace this entire block with your own text when submitting.</p>
+          <h3 id="sk2-narrative-title">Sketch narrative</h3>
           <p>
-            Context: Briefly describe the situation or user need this sketch addresses. For example,
-            "This sketch visualizes sunrise/sunset behavior for a simple teaching demo on coordinate
-            systems and interaction." Keep it short — 1–2 sentences.
           <ul>
-            <li><strong>Context:</strong> Who is this for? In what context will it be used? (e.g., mountain, pomodoro,
-              running, cooking, breathing?)</li>
-            <li><strong>Design decisions:</strong> Explain 2–3 key choices you made (layout, color, interaction) and why
-              you made them. Use plain language and reference any constraints (time, accessibility,
-              or target device).</li>
-            <li><strong>Future work:</strong> 1–2 ideas for improvements or extensions.</li>
+            <li><strong>Context:</strong> This clock is designed for focused productivity contexts like studying, deep work, or reading, where constantly checking a phone can be distracting. 
+            It provides a calm, ambient sense of time passing without demanding attention or interrupting concentration.</li>
+
+            <li><strong>Design decisions:</strong> I chose a candle metaphor because it represents time as something that slowly depletes, 
+              which aligns with how focused work often feels. 
+              Hours are encoded as the physical burn level of the candle, reinforced by a reusable vertical hour scale beside it, 
+              allowing the clock to function continuously rather than requiring reset pins. Minutes are represented through wax drips, 
+              where each drip corresponds to five minutes, providing coarse but readable progress without encouraging minute-by-minute 
+              checking. Seconds are encoded through a gentle, rhythmic flame sway that completes one full back-and-forth motion per second, 
+              making the visualization feel alive while remaining subtle enough not to distract. The neutral color palette and minimal 
+              layout were chosen to reduce visual noise and support sustained attention.</li>
+            <li><strong>Future work:</strong> This clock could be extended with light interaction, such as clicking the candle to start 
+              a timed focus session or adjusting the burn rate to match Pomodoro-style intervals. Another extension would be 
+              adding multiple candles to represent parallel tasks or longer-term goals across a day.</li>
           </ul>
           </p>
         </div>
@@ -74,16 +78,24 @@
         <h3>Sketch evolution</h3>
         <p class="small-note">Replace <b>these images</b> with your own sketch evolution images.</p>
         <figure>
-          <!-- <img src="images/sk2-evolution-1.png" alt="Sketch #A - step 1" /> -->
-          <figcaption>Step 1 — initial layout and annotated design decisions</figcaption>
+          <img src="images/sk2-evolution-1.png" alt="Sketch #A - step 1" class="sketch-image"  />
+          <figcaption>Step 1 — initial layout and annotated design decisions: This was my first sketch of the candle clock. 
+            I used pins placed along the candle to mark hours, which would fall as the candle burned down. 
+            The goal was to show time as something that slowly depletes, but this version relied on 
+            fixed markers and assumed the candle would be reset after each use.</figcaption>
         </figure>
         <figure>
-          <!-- <img src="images/sk2-evolution-2.png" alt="Sketch #A - step 2" /> -->
-          <figcaption>Step 2 — second layout after peer feedback</figcaption>
+          <img src="images/sk2-evolution-2.jpeg" alt="Sketch #A - step 2" class="sketch-image" />
+          <figcaption>Step 2 — second layout after peer feedback: After getting feedback, I realized the pin system wasn’t very practical. 
+            A peer suggested using a reusable measurement system instead, like a ruler next to the candle, 
+            so the clock wouldn’t need to be reset or re-pinned. This pushed the design 
+            toward a continuous way of measuring time rather than discrete markers.</figcaption>
         </figure>
         <figure>
-          <!-- <img src="images/sk2-evolution-3.png" alt="Sketch #A - step 3" /> -->
-          <figcaption>Step 3 — refined visuals and annotations</figcaption>
+          <img src="images/sk2-evolution-3.png" alt="Sketch #A - step 3" />
+          <figcaption>Step 3 — refined visuals and annotations: In the final version, the candle’s burn height is read against a reusable vertical scale to show hours. 
+            Minutes are represented by wax drips, and seconds are shown through subtle flame movement. This version keeps the calm, ambient feeling of the original idea 
+            while making the clock easier to read.</figcaption>
         </figure>
       </div>
     </section>

@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #16: Anchor flame to wick tip + keep 1 sway/second + restore clean legend text
+// Anchor flame to wick tip + keep 1 sway/second
 
 registerSketch('sk2', function (p) {
 
