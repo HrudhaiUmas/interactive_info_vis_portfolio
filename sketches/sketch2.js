@@ -1,6 +1,5 @@
 // Candle Clock — sketch2
-// Commit #8: Candle burn height maps to hour progress (12-hour cycle)
-// Minutes/seconds still exist, but they no longer reset the candle each hour.
+// Commit #10: Add minute wax drip count (5-minute chunks) integrated on candle side
 
 registerSketch('sk2', function (p) {
 
@@ -27,7 +26,7 @@ registerSketch('sk2', function (p) {
     // 0–11 hour index for pins + hour-progress
     let hourIndex = h24 % 12;
 
-    // Debug display as 12-hr
+    // Display as 12-hr
     let h12 = hourIndex;
     if (h12 === 0) h12 = 12;
 
@@ -35,10 +34,9 @@ registerSketch('sk2', function (p) {
     let minuteProgress = (m + s / 60) / 60;
 
     // Hour progress across a 12-hour candle (0..1)
-    // Example: at 1:30, hourProgress = (1 + 0.5) / 12
     let hourProgress = (hourIndex + minuteProgress) / 12;
 
-    // --- TITLE + DEBUG TIME ---
+    // --- TITLE + TIME ---
     p.fill(20);
     p.textSize(24);
     p.text("Candle Clock", 20, 20);
@@ -75,7 +73,6 @@ registerSketch('sk2', function (p) {
     p.rect(cx, candleCenterY, candleWidth, candleHeight, 22);
 
     // --- BURN MASK (hourProgress -> burn amount) ---
-    // Burn through 70% visually so you still see candle body at the end.
     let burnAmount = hourProgress * (candleHeight * 0.70);
 
     p.fill(245);
@@ -89,6 +86,43 @@ registerSketch('sk2', function (p) {
 
     // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
+    // -----------------------------
+    // MINUTE DRIP COUNT (5-minute chunks) — anchored near wick/top
+    // -----------------------------
+    let dripCount = Math.floor(m / 5);
+
+    // Start drips right below the wick base (near top surface)
+    let dripX = cx + candleWidth / 2 - 7;
+
+    // put the first drip very close to the wick/top edge
+    let dripStartY = currentCandleTopY + 14;
+
+    // spacing down the side
+    let dripSpacing = 14;
+
+    // only allow drips within the remaining wax region
+    let dripMinY = currentCandleTopY + 12;
+    let dripMaxY = candleBottomY - 14;
+
+    for (let i = 0; i < dripCount; i++) {
+      let dripY = dripStartY + i * dripSpacing;
+
+      if (dripY < dripMinY) dripY = dripMinY;
+      if (dripY > dripMaxY) break;
+
+      // subtle wobble (stable + alive)
+      let wobble = p.sin((p.frameCount * 2) + i * 35) * 0.8;
+
+      // Drip body
+      p.noStroke();
+      p.fill(225);
+      p.ellipse(dripX + wobble, dripY, 8, 10);
+
+      // Drip tail
+      p.fill(220);
+      p.ellipse(dripX + wobble, dripY + 6, 4, 6);
+    }
+
 
     // -----------------------------
     // FLAME FLICKER (subtle motion)
@@ -159,7 +193,7 @@ registerSketch('sk2', function (p) {
     // --- NOTE ---
     p.fill(80);
     p.textSize(14);
-    p.text("Next: add minute melt line inside candle (Option A)", 20, 90);
+    p.text("Minutes: internal melt line + drip count (5-min steps)", 20, 90);
   };
 
   p.windowResized = function () { };
