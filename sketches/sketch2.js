@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #5: Highlight current hour pin (hour -> pin)
+// Commit #6: Flame flicker (seconds -> subtle motion)
 
 registerSketch('sk2', function (p) {
 
@@ -23,15 +23,15 @@ registerSketch('sk2', function (p) {
     let m = p.minute();
     let s = p.second();
 
-    // 0–11 hour index (perfect for 12 pins)
+    // 0–11 hour index for 12 pins
     let hourIndex = h24 % 12;
 
     // Debug display as 12-hr
     let h12 = hourIndex;
     if (h12 === 0) h12 = 12;
 
-    // Smooth minute progress
-    let minuteProgress = (m + s / 60) / 60; // 0 -> 1
+    // Smooth minute progress for burn
+    let minuteProgress = (m + s / 60) / 60;
 
     // --- TITLE + DEBUG TIME ---
     p.fill(20);
@@ -84,18 +84,32 @@ registerSketch('sk2', function (p) {
     // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
 
+    // -----------------------------
+    // FLAME FLICKER (seconds -> motion)
+    // -----------------------------
+    // Use a smooth wave so it feels natural (not random jitter)
+    let flickerWave = p.sin(p.frameCount * 6); // -1..1
+    let flickerX = flickerWave * 2;            // slight side movement
+    let outerFlameH = 26 + flickerWave * 3;    // pulse height
+    let outerFlameW = 18 + flickerWave * 2;    // pulse width
+
+    let innerWave = p.sin(p.frameCount * 8 + 40);
+    let innerFlameH = 14 + innerWave * 2;
+    let innerFlameW = 8 + innerWave * 1.5;
+
     // --- WICK (follows burn) ---
     p.stroke(60);
     p.strokeWeight(3);
     p.line(cx, currentCandleTopY + 10, cx, currentCandleTopY - 15);
 
-    // --- FLAME (follows burn) ---
+    // --- OUTER FLAME ---
     p.noStroke();
     p.fill(255, 170, 60);
-    p.ellipse(cx, currentCandleTopY - 28, 18, 28);
+    p.ellipse(cx + flickerX, currentCandleTopY - 28, outerFlameW, outerFlameH);
 
+    // --- INNER FLAME ---
     p.fill(255, 210, 120);
-    p.ellipse(cx, currentCandleTopY - 25, 8, 14);
+    p.ellipse(cx + flickerX, currentCandleTopY - 25, innerFlameW, innerFlameH);
 
     // -----------------------------
     // PINS: 12 markers + highlight current hour
@@ -130,7 +144,7 @@ registerSketch('sk2', function (p) {
     // --- NOTE ---
     p.fill(80);
     p.textSize(14);
-    p.text("Next: flame flicker (seconds -> motion)", 20, 90);
+    p.text("Next: label pins (optional) or add subtle wax drips", 20, 90);
   };
 
   p.windowResized = function () { };
