@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #4: Wick + flame follow the burn height (no more floating flame)
+// Commit #5: Highlight current hour pin (hour -> pin)
 
 registerSketch('sk2', function (p) {
 
@@ -23,10 +23,14 @@ registerSketch('sk2', function (p) {
     let m = p.minute();
     let s = p.second();
 
-    let h12 = h24 % 12;
+    // 0–11 hour index (perfect for 12 pins)
+    let hourIndex = h24 % 12;
+
+    // Debug display as 12-hr
+    let h12 = hourIndex;
     if (h12 === 0) h12 = 12;
 
-    // Smooth minute progress so the burn moves smoothly
+    // Smooth minute progress
     let minuteProgress = (m + s / 60) / 60; // 0 -> 1
 
     // --- TITLE + DEBUG TIME ---
@@ -60,17 +64,14 @@ registerSketch('sk2', function (p) {
     p.fill(200);
     p.ellipse(cx, plateCenterY, plateWidth, plateHeight);
 
-    // --- CANDLE BODY (base shape) ---
+    // --- CANDLE BODY (base) ---
     p.noStroke();
     p.fill(235);
     p.rect(cx, candleCenterY, candleWidth, candleHeight, 22);
 
-    // ---------------------------------------
-    // BURN EFFECT: hide the top based on minute
-    // ---------------------------------------
-    let burnAmount = minuteProgress * (candleHeight * 0.70); // burn through 70% visually
+    // --- BURN MASK (minute -> burn amount) ---
+    let burnAmount = minuteProgress * (candleHeight * 0.70);
 
-    // Cover wax from the top down (background-colored mask)
     p.fill(245);
     p.rect(
       cx,
@@ -80,20 +81,15 @@ registerSketch('sk2', function (p) {
       22
     );
 
-    // NEW: compute the current top of the candle AFTER burning
+    // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
 
-    // --- WICK (attached to current candle top) ---
+    // --- WICK (follows burn) ---
     p.stroke(60);
     p.strokeWeight(3);
-    p.line(
-      cx,
-      currentCandleTopY + 10,
-      cx,
-      currentCandleTopY - 15
-    );
+    p.line(cx, currentCandleTopY + 10, cx, currentCandleTopY - 15);
 
-    // --- FLAME (attached to current candle top) ---
+    // --- FLAME (follows burn) ---
     p.noStroke();
     p.fill(255, 170, 60);
     p.ellipse(cx, currentCandleTopY - 28, 18, 28);
@@ -101,20 +97,40 @@ registerSketch('sk2', function (p) {
     p.fill(255, 210, 120);
     p.ellipse(cx, currentCandleTopY - 25, 8, 14);
 
-    // --- PIN PLACEHOLDERS (still static for now) ---
+    // -----------------------------
+    // PINS: 12 markers + highlight current hour
+    // -----------------------------
     let pinCount = 12;
     let pinSpacing = candleHeight / pinCount;
 
-    p.fill(150, 0, 0);
     for (let i = 0; i < pinCount; i++) {
       let y = originalCandleTopY + i * pinSpacing;
-      p.ellipse(cx + candleWidth / 2 + 14, y, 6, 6);
+      let x = cx + candleWidth / 2 + 14;
+
+      // Normal pin
+      p.noStroke();
+      p.fill(150, 0, 0);
+      p.ellipse(x, y, 6, 6);
+
+      // Highlight the current hour pin
+      if (i === hourIndex) {
+        // Glow ring
+        p.noFill();
+        p.stroke(255, 120, 120);
+        p.strokeWeight(2);
+        p.ellipse(x, y, 16, 16);
+
+        // Bright center
+        p.noStroke();
+        p.fill(220, 0, 0);
+        p.ellipse(x, y, 9, 9);
+      }
     }
 
     // --- NOTE ---
     p.fill(80);
     p.textSize(14);
-    p.text("Next: highlight current hour pin (hour -> pin)", 20, 90);
+    p.text("Next: flame flicker (seconds -> motion)", 20, 90);
   };
 
   p.windowResized = function () { };
