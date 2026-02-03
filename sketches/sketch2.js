@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #3: Map wax burn level to minutes (top burns down within the hour)
+// Commit #4: Wick + flame follow the burn height (no more floating flame)
 
 registerSketch('sk2', function (p) {
 
@@ -26,8 +26,8 @@ registerSketch('sk2', function (p) {
     let h12 = h24 % 12;
     if (h12 === 0) h12 = 12;
 
-    // Smooth minute progress (makes motion feel alive)
-    let minuteProgress = (m + s / 60) / 60; // 0.0 -> 0.999...
+    // Smooth minute progress so the burn moves smoothly
+    let minuteProgress = (m + s / 60) / 60; // 0 -> 1
 
     // --- TITLE + DEBUG TIME ---
     p.fill(20);
@@ -52,7 +52,8 @@ registerSketch('sk2', function (p) {
 
     let candleBottomY = plateCenterY - plateHeight / 2;
     let candleCenterY = candleBottomY - candleHeight / 2;
-    let candleTopY = candleCenterY - candleHeight / 2;
+
+    let originalCandleTopY = candleCenterY - candleHeight / 2;
 
     // --- PLATE ---
     p.noStroke();
@@ -67,47 +68,53 @@ registerSketch('sk2', function (p) {
     // ---------------------------------------
     // BURN EFFECT: hide the top based on minute
     // ---------------------------------------
-    // As minutes increase, we "remove" more wax from the top.
-    let burnAmount = minuteProgress * (candleHeight * 0.70); 
-    // ^ only burn through 70% of the candle so it doesn't look extreme
+    let burnAmount = minuteProgress * (candleHeight * 0.70); // burn through 70% visually
 
-    // Draw a background-colored rectangle over the top to simulate wax being gone
+    // Cover wax from the top down (background-colored mask)
     p.fill(245);
     p.rect(
       cx,
-      candleTopY + burnAmount / 2,      // center of the cover rectangle
-      candleWidth + 6,                  // slightly wider to fully cover edges
-      burnAmount + 2,                   // cover height
+      originalCandleTopY + burnAmount / 2,
+      candleWidth + 6,
+      burnAmount + 2,
       22
     );
 
-    // --- WICK (stays at original top for now; we’ll move it later if you want) ---
+    // NEW: compute the current top of the candle AFTER burning
+    let currentCandleTopY = originalCandleTopY + burnAmount;
+
+    // --- WICK (attached to current candle top) ---
     p.stroke(60);
     p.strokeWeight(3);
-    p.line(cx, candleTopY + 10, cx, candleTopY - 15);
+    p.line(
+      cx,
+      currentCandleTopY + 10,
+      cx,
+      currentCandleTopY - 15
+    );
 
-    // --- FLAME (static) ---
+    // --- FLAME (attached to current candle top) ---
     p.noStroke();
     p.fill(255, 170, 60);
-    p.ellipse(cx, candleTopY - 28, 18, 28);
+    p.ellipse(cx, currentCandleTopY - 28, 18, 28);
 
     p.fill(255, 210, 120);
-    p.ellipse(cx, candleTopY - 25, 8, 14);
+    p.ellipse(cx, currentCandleTopY - 25, 8, 14);
 
-    // --- PIN PLACEHOLDERS ---
+    // --- PIN PLACEHOLDERS (still static for now) ---
     let pinCount = 12;
     let pinSpacing = candleHeight / pinCount;
 
     p.fill(150, 0, 0);
     for (let i = 0; i < pinCount; i++) {
-      let y = candleTopY + i * pinSpacing;
+      let y = originalCandleTopY + i * pinSpacing;
       p.ellipse(cx + candleWidth / 2 + 14, y, 6, 6);
     }
 
-    // --- NOTE FOR NEXT STEP ---
+    // --- NOTE ---
     p.fill(80);
     p.textSize(14);
-    p.text("Next: move wick/flame down with burn + add hour-band meaning", 20, 90);
+    p.text("Next: highlight current hour pin (hour -> pin)", 20, 90);
   };
 
   p.windowResized = function () { };
