@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Commit #10: Add minute wax drip count (5-minute chunks) integrated on candle side
+// Commit #12: Remove bottom artifact + simplify top + make flame flicker tied to seconds
 
 registerSketch('sk2', function (p) {
 
@@ -87,6 +87,36 @@ registerSketch('sk2', function (p) {
     // Current candle top after burning
     let currentCandleTopY = originalCandleTopY + burnAmount;
     // -----------------------------
+    // MELTED WAX POOL AT TOP (adds realism + clarity)
+    // -----------------------------
+    p.noStroke();
+    p.fill(228);
+    p.ellipse(cx, currentCandleTopY + 10, candleWidth - 18, 16);
+
+    p.fill(235);
+    p.ellipse(cx, currentCandleTopY + 9, candleWidth - 34, 10);
+
+    // -----------------------------
+    // MINUTE MELT LINE INSIDE CANDLE (mapped to remaining wax)
+    // -----------------------------
+    let topPadding = 12;
+    let bottomPadding = 18; // slightly larger so the line never sits near the bottom
+
+    let remainingTopY = currentCandleTopY + topPadding;
+    let remainingBottomY = candleBottomY - bottomPadding;
+
+    let minuteLineY = remainingTopY + (minuteProgress * (remainingBottomY - remainingTopY));
+
+    // draw melt line
+    p.stroke(210);
+    p.strokeWeight(3);
+    p.line(cx - candleWidth / 2 + 10, minuteLineY, cx + candleWidth / 2 - 10, minuteLineY);
+
+    // small tick at right edge
+    p.strokeWeight(2);
+    p.line(cx + candleWidth / 2 - 10, minuteLineY, cx + candleWidth / 2 - 4, minuteLineY);
+
+    // -----------------------------
     // MINUTE DRIP COUNT (5-minute chunks) — anchored near wick/top
     // -----------------------------
     let dripCount = Math.floor(m / 5);
@@ -104,6 +134,15 @@ registerSketch('sk2', function (p) {
     let dripMinY = currentCandleTopY + 12;
     let dripMaxY = candleBottomY - 14;
 
+    // -----------------------------
+    // CONNECTOR LINE (melt line -> drip side) for clear mapping
+    // -----------------------------
+    p.stroke(220);
+    p.strokeWeight(1);
+    let edgeX = cx + candleWidth / 2 - 10;
+    p.line(edgeX, minuteLineY, dripX - 2, minuteLineY);
+    p.noStroke();
+
     for (let i = 0; i < dripCount; i++) {
       let dripY = dripStartY + i * dripSpacing;
 
@@ -111,28 +150,42 @@ registerSketch('sk2', function (p) {
       if (dripY > dripMaxY) break;
 
       // subtle wobble (stable + alive)
-      let wobble = p.sin((p.frameCount * 2) + i * 35) * 0.8;
+      // tie wobble to seconds so it always changes as time changes,
+      // and also add a tiny frame-based component so it feels alive within the second
+      let wobble = p.sin((s * 40) + (p.frameCount * 2) + i * 35) * 0.8;
 
-      // Drip body
+      // Highlight newest drip so current 5-min bucket is obvious
+      let isNewest = (i === dripCount - 1);
+
       p.noStroke();
-      p.fill(225);
-      p.ellipse(dripX + wobble, dripY, 8, 10);
+
+      if (isNewest) {
+        p.fill(200); // slightly darker
+        p.ellipse(dripX + wobble, dripY, 10, 12);
+      } else {
+        p.fill(225);
+        p.ellipse(dripX + wobble, dripY, 8, 10);
+      }
 
       // Drip tail
       p.fill(220);
       p.ellipse(dripX + wobble, dripY + 6, 4, 6);
     }
 
+    // -----------------------------
+    // FLAME FLICKER (tied to seconds so it always changes each second)
+    // -----------------------------
+    // t goes 0..1 within the current second (smooth animation)
+    let t = (p.millis() % 1000) / 1000;
 
-    // -----------------------------
-    // FLAME FLICKER (subtle motion)
-    // -----------------------------
-    let flickerWave = p.sin(p.frameCount * 6);
+    // A second-synced wave: each second has a new "phase", and within the second it animates smoothly
+    // This guarantees it updates with real time and still looks alive between second ticks.
+    let flickerWave = p.sin((s * 30) + (t * 360));
     let flickerX = flickerWave * 2;
     let outerFlameH = 26 + flickerWave * 3;
     let outerFlameW = 18 + flickerWave * 2;
 
-    let innerWave = p.sin(p.frameCount * 8 + 40);
+    let innerWave = p.sin((s * 34) + (t * 420) + 40);
     let innerFlameH = 14 + innerWave * 2;
     let innerFlameW = 8 + innerWave * 1.5;
 
