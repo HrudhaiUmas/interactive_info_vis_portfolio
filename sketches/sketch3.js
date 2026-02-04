@@ -24,16 +24,25 @@ registerSketch('sk3', function (p) {
     return { w, h };
   }
 
-  // Commit 2: sky gradient
-  function drawSkyGradient() {
+  // ====== Commit 9: day/night gradient variants ======
+  function drawSkyGradient(dayMode) {
     const steps = 40;
 
     for (let i = 0; i < steps; i++) {
       const t = i / (steps - 1);
 
-      const r = p.lerp(15, 70, t);
-      const g = p.lerp(25, 90, t);
-      const b = p.lerp(55, 140, t);
+      let r, g, b;
+
+      // Day gradient vs Night gradient
+      if (dayMode) {
+        r = p.lerp(140, 245, t);
+        g = p.lerp(200, 220, t);
+        b = p.lerp(255, 180, t);
+      } else {
+        r = p.lerp(15, 70, t);
+        g = p.lerp(25, 90, t);
+        b = p.lerp(55, 140, t);
+      }
 
       p.noStroke();
       p.fill(r, g, b);
@@ -43,8 +52,10 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Commit 3: starfield
-  function drawStars() {
+  // Commit 3: starfield (now night-only)
+  function drawStars(dayMode) {
+    if (dayMode) return;
+
     p.noStroke();
     const starCount = 70;
 
@@ -90,7 +101,7 @@ registerSketch('sk3', function (p) {
     return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
   }
 
-  function drawCenteredTimePill(geom) {
+  function drawCenteredTimePill(geom, dayMode) {
     const h = p.hour();
     const m = p.minute();
     const s = p.second();
@@ -105,16 +116,18 @@ registerSketch('sk3', function (p) {
     const y = centerY - (boxH / 2);
 
     p.noStroke();
-    p.fill(0, 0, 0, 160);
+    if (dayMode) p.fill(255, 255, 255, 170);
+    else p.fill(0, 0, 0, 160);
+
     p.rect(x, y, boxW, boxH, 18);
 
-    p.fill(255);
+    p.fill(dayMode ? 30 : 255);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(40);
     p.text(formatHMS(h, m, s), centerX, centerY);
   }
 
-  // Commit 6: sun/moon orbit along the arc by time-of-day
+  // Sun/moon orbit along arc by time-of-day
   function getDayFraction() {
     const h = p.hour();
     const m = p.minute();
@@ -124,23 +137,17 @@ registerSketch('sk3', function (p) {
     return totalSeconds / (24 * 3600);
   }
 
-  function isDaytimeSimple() {
-    const h = p.hour();
-    return (h >= 6 && h < 18);
-  }
-
-  function drawSunOrMoon(geom) {
+  function drawSunOrMoon(geom, dayMode) {
     const dayFraction = getDayFraction();
     const angle = p.lerp(p.PI, p.TWO_PI, dayFraction);
 
     const x = geom.cx + (geom.arcW / 2) * Math.cos(angle);
     const y = geom.cy + (geom.arcH / 2) * Math.sin(angle);
 
-    const dayMode = isDaytimeSimple();
-
     p.noStroke();
 
     if (dayMode) {
+      // Sun
       p.fill(255, 210, 60);
       p.circle(x, y, 46);
 
@@ -157,10 +164,11 @@ registerSketch('sk3', function (p) {
         p.line(x1, y1, x2, y2);
       }
     } else {
+      // Moon
       p.fill(230, 230, 255);
       p.circle(x, y, 40);
 
-      p.fill(15, 25, 55);
+      p.fill(30, 40, 90);
       p.circle(x + 10, y - 5, 36);
     }
   }
@@ -191,7 +199,7 @@ registerSketch('sk3', function (p) {
   }
 
   // In-canvas button drawing
-  function drawGeoButton() {
+  function drawGeoButton(dayMode) {
     geoButton.isHover =
       (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
        p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
@@ -213,18 +221,20 @@ registerSketch('sk3', function (p) {
   }
 
   // Location pill
-  function drawLocationLine() {
+  function drawLocationLine(dayMode) {
     p.noStroke();
-    p.fill(0, 0, 0, 140);
+    if (dayMode) p.fill(255, 255, 255, 160);
+    else p.fill(0, 0, 0, 140);
+
     p.rect(12, 60, 520, 26, 10);
 
-    p.fill(255);
+    p.fill(dayMode ? 30 : 255);
     p.textAlign(p.LEFT, p.CENTER);
     p.textSize(12);
     p.text(locationLine, 22, 73);
   }
 
-  // ====== Commit 8: Sunrise/Sunset computation (local, no API) ======
+  // ====== Sunrise/Sunset computation (local, no API) ======
   function degToRad(d) { return d * (Math.PI / 180); }
   function radToDeg(r) { return r * (180 / Math.PI); }
 
@@ -241,9 +251,8 @@ registerSketch('sk3', function (p) {
     return v;
   }
 
-  // Returns { sunriseMinutes, sunsetMinutes } in LOCAL minutes-from-midnight
   function computeSunriseSunsetMinutes(lat, lon, dateObj) {
-    const zenith = 90.833; // standard sunrise/sunset zenith
+    const zenith = 90.833;
     const N = dayOfYear(dateObj);
     const lngHour = lon / 15;
 
@@ -282,7 +291,7 @@ registerSketch('sk3', function (p) {
       let UT = T - lngHour;
       UT = (UT % 24 + 24) % 24;
 
-      const tzOffsetMinutes = -dateObj.getTimezoneOffset(); // local = UTC + offset
+      const tzOffsetMinutes = -dateObj.getTimezoneOffset();
       const localHours = UT + (tzOffsetMinutes / 60);
       const localHoursNorm = (localHours % 24 + 24) % 24;
 
@@ -308,11 +317,10 @@ registerSketch('sk3', function (p) {
     return h + ":" + pad2(mm) + " " + suffix;
   }
 
-  function drawSunInfoLine(geom, sunriseMinutes, sunsetMinutes) {
+  function drawSunInfoLine(geom, sunriseMinutes, sunsetMinutes, dayMode) {
     const centerX = geom.cx;
     const centerY = (geom.topY + geom.horizonY) / 2;
 
-    // Place line just below time pill
     const y = centerY + 52;
 
     const info =
@@ -320,13 +328,20 @@ registerSketch('sk3', function (p) {
       "  •  Sunset: " + formatMinutesTo12h(sunsetMinutes);
 
     p.noStroke();
-    p.fill(0, 0, 0, 140);
+    if (dayMode) p.fill(255, 255, 255, 160);
+    else p.fill(0, 0, 0, 140);
+
     p.rect(p.width * 0.17, y - 14, p.width * 0.66, 28, 14);
 
-    p.fill(255);
+    p.fill(dayMode ? 30 : 255);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(13);
     p.text(info, centerX, y);
+  }
+
+  function computeDayModeFromSunTimes(sunriseMinutes, sunsetMinutes) {
+    const currentMinutes = (p.hour() * 60) + p.minute();
+    return (currentMinutes >= sunriseMinutes && currentMinutes < sunsetMinutes);
   }
 
   p.setup = function () {
@@ -344,21 +359,24 @@ registerSketch('sk3', function (p) {
   };
 
   p.draw = function () {
-    drawSkyGradient();
-    drawStars();
+    const now = new Date();
+    const sunTimes = computeSunriseSunsetMinutes(userLat, userLon, now);
+
+    // Commit 9: real day/night mode based on sunrise/sunset
+    const dayMode = computeDayModeFromSunTimes(sunTimes.sunriseMinutes, sunTimes.sunsetMinutes);
+
+    drawSkyGradient(dayMode);
+    drawStars(dayMode);
 
     const geom = drawArcAndHorizon();
 
-    drawSunOrMoon(geom);
-    drawCenteredTimePill(geom);
+    drawSunOrMoon(geom, dayMode);
+    drawCenteredTimePill(geom, dayMode);
 
-    drawGeoButton();
-    drawLocationLine();
+    drawGeoButton(dayMode);
+    drawLocationLine(dayMode);
 
-    // Commit 8: compute + display sunrise/sunset
-    const now = new Date();
-    const sunTimes = computeSunriseSunsetMinutes(userLat, userLon, now);
-    drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes);
+    drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes, dayMode);
   };
 
   p.windowResized = function () {
