@@ -1,14 +1,26 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 7: rotate compass ring using headingDeg (mouse fallback still drives heading)
+// Commit 8: add orientation permission button (iOS support) + click handling
+// NOTE: sensor is NOT wired to heading yet (that is commit 9).
+// For now, heading still uses mouse fallback unless we later enable sensor input.
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
-  // ====== Heading state (mouse fallback) ======
-  let headingDeg = 0;           // 0 = North
-  let hasOrientation = false;   // sensor not wired yet
-  let useMouseFallback = true;  // desktop fallback
+  // ====== Heading state (mouse fallback for now) ======
+  let headingDeg = 0;            // 0 = North
+  let hasOrientation = false;    // still false in this commit (sensor not wired yet)
+  let useMouseFallback = true;   // still true in this commit
+
+  // ====== Commit 8: orientation button state ======
+  let orientButton = {
+    x: 16,
+    y: 16,
+    w: 200,
+    h: 34,
+    label: "Enable Orientation",
+    isHover: false
+  };
 
   function computeCanvasSize() {
     const w = Math.min(p.windowWidth, MAX_W);
@@ -62,6 +74,50 @@ registerSketch('sk4', function (p) {
     p.text(status, p.width / 2, p.height * 0.16);
   }
 
+  // ====== Commit 8: permission request (iOS needs user gesture) ======
+  function requestOrientationPermission() {
+    // If the API doesn't exist, we can't request sensors
+    if (typeof DeviceOrientationEvent === "undefined") {
+      orientButton.label = "No orientation sensor";
+      return;
+    }
+
+    // iOS 13+ requires explicit permission request
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then(function (response) {
+          if (response === "granted") {
+            // We will wire the actual event listener in commit 9.
+            orientButton.label = "Permission granted";
+          } else {
+            orientButton.label = "Permission denied";
+          }
+        })
+        .catch(function () {
+          orientButton.label = "Permission blocked";
+        });
+    } else {
+      // Non-iOS browsers typically don't need a permission request
+      orientButton.label = "Permission not needed";
+    }
+  }
+
+  // ====== Commit 8: draw the in-canvas button ======
+  function drawOrientationButton() {
+    orientButton.isHover =
+      (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
+       p.mouseY >= orientButton.y && p.mouseY <= orientButton.y + orientButton.h);
+
+    p.noStroke();
+    p.fill(255, 255, 255, orientButton.isHover ? 235 : 205);
+    p.rect(orientButton.x, orientButton.y, orientButton.w, orientButton.h, 12);
+
+    p.fill(25);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(12);
+    p.text(orientButton.label, orientButton.x + orientButton.w / 2, orientButton.y + orientButton.h / 2);
+  }
+
   // ====== Compass shell ======
   function drawOuterShell(cx, cy, r) {
     p.noStroke();
@@ -87,15 +143,12 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Commit 7: Rotating compass ring ======
+  // ====== Rotating compass ring (still driven by headingDeg) ======
   function drawCompassRingRotating(cx, cy, r) {
-    // Rotate the ring opposite the heading.
-    // If you face East (heading 90), the compass card should rotate -90.
     p.push();
     p.translate(cx, cy);
     p.rotate(p.radians(-headingDeg));
 
-    // Ticks every 15 degrees
     p.stroke(0, 0, 0, 60);
     p.strokeWeight(2);
 
@@ -114,7 +167,6 @@ registerSketch('sk4', function (p) {
       p.line(x1, y1, x2, y2);
     }
 
-    // Cardinal letters
     p.noStroke();
     p.fill(25);
     p.textAlign(p.CENTER, p.CENTER);
@@ -134,10 +186,21 @@ registerSketch('sk4', function (p) {
     p.textAlign(p.CENTER, p.CENTER);
   };
 
+  // Commit 8: click handling for the button
+  p.mousePressed = function () {
+    const insideButton =
+      (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
+       p.mouseY >= orientButton.y && p.mouseY <= orientButton.y + orientButton.h);
+
+    if (insideButton) {
+      requestOrientationPermission();
+    }
+  };
+
   p.draw = function () {
     p.background(210, 220, 230);
 
-    // Mouse fallback heading
+    // Mouse fallback heading (still the only driver in commit 8)
     if (useMouseFallback) {
       const t = p.constrain(p.mouseX / p.width, 0, 1);
       headingDeg = 360 * t;
@@ -150,6 +213,9 @@ registerSketch('sk4', function (p) {
     drawDigitalTimePill(formatTime12(h, m, s));
     drawHeadingStatusLine();
 
+    // Commit 8: draw button
+    drawOrientationButton();
+
     const cx = p.width / 2;
     const cy = p.height * 0.56;
     const r = Math.min(p.width, p.height) * 0.28;
@@ -157,7 +223,6 @@ registerSketch('sk4', function (p) {
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
 
-    // Commit 7: rotating compass ring
     drawCompassRingRotating(cx, cy, r);
   };
 
