@@ -72,6 +72,12 @@
             <li><strong>Future work:</strong> This clock could be extended with light interaction, such as clicking the candle to start 
               a timed focus session or adjusting the burn rate to match Pomodoro-style intervals. Another extension would be 
               adding multiple candles to represent parallel tasks or longer-term goals across a day.</li>
+
+            <li><strong>Evaluation</strong> In the earlier version, the “pins falling” idea looked cool but wasn’t 
+              reusable and made the time harder to read accurately. Switching to the side ruler made the hour 
+              reading way more grounded, and aligning the candle height to the ruler fixed the biggest clarity issue. 
+              The wax drips are intentionally not super precise (5-minute chunks), which fits the focus context because 
+              it gives progress without making you obsess over every minute.</li>
           </ul>
           </p>
         </div>
@@ -135,6 +141,11 @@
           <li><strong>Future work:</strong> A future version could allow users to edit routines directly on the 
             arc or visualize deviations from their planned schedule. Another extension could show weekly 
             patterns to compare how consistently routines are followed over time</li>
+          <li><strong>Evaluation</strong> The arc works best as a “where am I in my day?” check-in, 
+            not a precision clock, so it feels less stressful than a normal clock face. 
+            Adding sunrise/sunset markers helped a lot because otherwise the arc felt kind of abstract. 
+            The routine tracker improves usability because you can connect the time to what you should be 
+            doing, but I tried to keep it simple so it doesn’t turn into a full calendar.</li>
         </ul>
         </p>
       </div>
@@ -186,6 +197,12 @@
           <li><strong>Future work:</strong> This clock could be extended by integrating GPS data to show location-based time changes or 
             by shifting the color palette based on direction or time of day. Another extension could adapt the design for 
             wearable devices used during outdoor activities.</li>
+
+          <li><strong>Evaluation</strong> The hardest part was visual hierarchy as at first it felt 
+            like too many lines competing, so it wasn’t obvious what was “time” vs “direction.” 
+            Separating it into layers (fixed direction indicator + rotating compass ring + stable 
+            clock hands) made it readable while still feeling unique. The pulsing seconds dot keeps 
+            the clock feeling alive without adding another spinning hand that would clutter the face.</li>
         </ul>
         </p>
       </div>
