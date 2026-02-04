@@ -1,5 +1,6 @@
 // Candle Clock — sketch2
-// Commit #16: Align hour ruler to candle body + cap visible drips + show drip count in legend
+// Fix: Make the hour ruler use the SAME vertical span as the candle burn span
+//      so the candle top + hour ruler always match.
 
 registerSketch('sk2', function (p) {
 
@@ -26,7 +27,7 @@ registerSketch('sk2', function (p) {
     // Smooth fraction within the current second (0..1)
     let secondFraction = (p.millis() % 1000) / 1000;
 
-    // 0–11 hour index for pins + hour-progress
+    // 0–11 hour index (12-hour clock)
     let hourIndex = h24 % 12;
 
     // Display as 12-hr
@@ -37,6 +38,7 @@ registerSketch('sk2', function (p) {
     let minuteProgress = (m + (s + secondFraction) / 60) / 60;
 
     // Hour progress across a 12-hour candle (0..1)
+    // (hourIndex in 0..11, plus fractional minute progress)
     let hourProgress = (hourIndex + minuteProgress) / 12;
 
     // --- TITLE + TIME ---
@@ -80,20 +82,31 @@ registerSketch('sk2', function (p) {
     p.fill(235);
     p.rect(cx, candleCenterY, candleWidth, candleHeight, 22);
 
-    // --- BURN MASK (hourProgress -> burn amount) ---
-    let burnAmount = hourProgress * (candleHeight * 0.70);
+    // -----------------------------
+    // IMPORTANT FIX:
+    // Define ONE burn span and use it for:
+    //  - burn mask + current candle top
+    //  - hour ruler top/bottom + pin spacing
+    // -----------------------------
+    let burnSpan = candleHeight * 0.70;      // how much of the candle is "time"
+    let burnTopY = originalCandleTopY;       // burn starts at the candle's original top
+    let burnBottomY = burnTopY + burnSpan;   // burn ends here (leaves a base unburned)
 
+    // --- BURN MASK (hourProgress -> burn amount) ---
+    let burnAmount = hourProgress * burnSpan;
+
+    // Hide the burned portion (top-down)
     p.fill(245);
     p.rect(
       cx,
-      originalCandleTopY + burnAmount / 2,
+      burnTopY + burnAmount / 2,
       candleWidth + 6,
       burnAmount + 2,
       22
     );
 
-    // Current candle top after burning
-    let currentCandleTopY = originalCandleTopY + burnAmount;
+    // Current candle top after burning (THIS is the key Y we align everything to)
+    let currentCandleTopY = burnTopY + burnAmount;
 
     // -----------------------------
     // MELTED WAX POOL AT TOP (3D rim matches candle width)
@@ -113,8 +126,6 @@ registerSketch('sk2', function (p) {
 
     // -----------------------------
     // MINUTE DRIP COUNT (5-minute chunks) ONLY
-    // - Cap visible drips so it stays readable near 55–59 minutes.
-    // - Still show exact dripCount in the legend.
     // -----------------------------
     let dripCount = Math.floor(m / 5);
 
@@ -133,17 +144,13 @@ registerSketch('sk2', function (p) {
     }
 
     for (let i = startIndex; i < dripCount; i++) {
-      // local index controls vertical placement when we’re only drawing the most recent drips
       let localIndex = i - startIndex;
-
       let dripY = dripStartY + localIndex * dripSpacing;
 
       if (dripY < dripMinY) dripY = dripMinY;
       if (dripY > dripMaxY) break;
 
-      // subtle wobble (kept tiny so drips don't look chaotic)
       let wobble = p.sin(((m * 60) + s + secondFraction) * 6 + i * 35) * 0.8;
-
       let isNewest = (i === dripCount - 1);
 
       p.noStroke();
@@ -173,26 +180,19 @@ registerSketch('sk2', function (p) {
     // -----------------------------
     // FLAME (1 smooth back-and-forth per second, CONNECTED to wick)
     // -----------------------------
-    // phase goes 0 → 2π once every second
     let phase = (s + secondFraction) * 360;
-
-    // single smooth sine wave
     let flicker = p.sin(phase);
 
-    // horizontal sway
     let flickerX = flicker * 4;
 
-    // size changes
     let outerFlameH = 26 + flicker * 6;
     let outerFlameW = 18 + flicker * 4;
 
     let innerFlameH = 14 + flicker * 4;
     let innerFlameW = 8 + flicker * 2.5;
 
-    // Flame base anchored to wick tip
     let flameBaseY = wickTopY;
 
-    // --- OUTER FLAME ---
     p.noStroke();
     p.fill(255, 170, 60);
     p.ellipse(
@@ -202,7 +202,6 @@ registerSketch('sk2', function (p) {
       outerFlameH
     );
 
-    // --- INNER FLAME ---
     p.fill(255, 210, 120);
     p.ellipse(
       cx + flickerX,
@@ -212,55 +211,58 @@ registerSketch('sk2', function (p) {
     );
 
     // -----------------------------
-    // PINS + LABELS (hours) — aligned to candle’s visible body
+    // PINS + LABELS (hours)
+    // FIX: Make ruler span EXACTLY the same burn span (burnTopY -> burnBottomY)
+    // Also use 13 pins so there are 12 equal intervals (true 12-hour span).
     // -----------------------------
-    let pinCount = 12;
+    let pinCount = 13; // 0..12 -> 12 intervals
 
-    // Padding so pins line up with the candle’s visible start/end (rounded corners + rim)
-    let hourTopPadding = 18;
-    let hourBottomPadding = 18;
+    let hourTopY = burnTopY;
+    let hourBottomY = burnBottomY;
 
-    let hourTopY = originalCandleTopY + hourTopPadding;
-    let hourBottomY = candleBottomY - hourBottomPadding;
-
-    // Use pinCount - 1 so the last pin lands exactly on hourBottomY
     let pinSpacing = (hourBottomY - hourTopY) / (pinCount - 1);
+    let pinX = cx + candleWidth / 2 + 14;
 
     p.textSize(12);
 
     for (let i = 0; i < pinCount; i++) {
       let y = hourTopY + i * pinSpacing;
-      let x = cx + candleWidth / 2 + 14;
 
+      // base pin dot
       p.noStroke();
       p.fill(150, 0, 0);
-      p.ellipse(x, y, 6, 6);
+      p.ellipse(pinX, y, 6, 6);
 
-      let label = String(i);
-      if (i === 0) label = "12";
+      // labels: 0 and 12 are both "12"
+      let label;
+      if (i === 0 || i === 12) label = "12";
+      else label = String(i);
 
       p.fill(90);
-      p.text(label, x + 12, y - 6);
-
-      if (i === hourIndex) {
-        p.noFill();
-        p.stroke(255, 120, 120);
-        p.strokeWeight(2);
-        p.ellipse(x, y, 16, 16);
-
-        p.noStroke();
-        p.fill(220, 0, 0);
-        p.ellipse(x, y, 9, 9);
-
-        p.fill(20);
-        p.text(label, x + 12, y - 6);
-      }
+      p.text(label, pinX + 12, y - 6);
     }
+
+    // -----------------------------
+    // "NOW" marker: draw at the candle top Y (perfect alignment check)
+    // -----------------------------
+    p.noFill();
+    p.stroke(255, 120, 120);
+    p.strokeWeight(2);
+    p.ellipse(pinX, currentCandleTopY, 16, 16);
+
+    p.noStroke();
+    p.fill(220, 0, 0);
+    p.ellipse(pinX, currentCandleTopY, 9, 9);
+
+    // small tick across the ruler at the exact candle top
+    p.stroke(255, 120, 120);
+    p.strokeWeight(2);
+    p.line(pinX - 10, currentCandleTopY, pinX + 10, currentCandleTopY);
 
     // -----------------------------
     // LEGEND (kept clean + not overlapping)
     // -----------------------------
-    let legendX = cx + candleWidth / 2 + 14;
+    let legendX = pinX;
     let legendY = originalCandleTopY - 30;
 
     p.noStroke();
@@ -268,9 +270,8 @@ registerSketch('sk2', function (p) {
     p.textSize(13);
     p.text("Hours", legendX, legendY);
 
-    // Show exact minute encoding even when we cap visible drips
-    p.textSize(12);
-    p.text("Wax Drips Count: " + dripCount + " (5 min each)", legendX, legendY + 18);
+    // p.textSize(12);
+    // p.text("Wax Drips Count: " + dripCount + " (5 min each)", legendX, legendY + 18);
   };
 
   p.windowResized = function () { };
