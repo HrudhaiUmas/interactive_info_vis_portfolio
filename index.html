@@ -57,17 +57,18 @@
           <h3 id="sk2-narrative-title">Sketch narrative</h3>
           <p>
           <ul>
-            <li><strong>Context:</strong> This clock is designed for focused productivity contexts like studying, deep work, or reading, where constantly checking a phone can be distracting. 
-            It provides a calm, ambient sense of time passing without demanding attention or interrupting concentration.</li>
+            <li><strong>Context:</strong> This clock is designed for focused productivity contexts like studying, deep work, or reading—situations where constantly checking a phone or digital clock can break concentration. Instead of demanding attention, the candle clock gives a calm, ambient sense of time passing that can sit quietly in the background.</li>
 
-            <li><strong>Design decisions:</strong> I chose a candle metaphor because it represents time as something that slowly depletes, 
-              which aligns with how focused work often feels. 
-              Hours are encoded as the physical burn level of the candle, reinforced by a reusable vertical hour scale beside it, 
-              allowing the clock to function continuously rather than requiring reset pins. Minutes are represented through wax drips, 
-              where each drip corresponds to five minutes, providing coarse but readable progress without encouraging minute-by-minute 
-              checking. Seconds are encoded through a gentle, rhythmic flame sway that completes one full back-and-forth motion per second, 
-              making the visualization feel alive while remaining subtle enough not to distract. The neutral color palette and minimal 
-              layout were chosen to reduce visual noise and support sustained attention.</li>
+            <li><strong>Design decisions:</strong> I chose a candle metaphor because it frames time as something that slowly 
+              depletes rather than something that ticks aggressively forward. This matches how focused work often feels steady, 
+              continuous, and immersive. Hours are encoded by the candle’s burn height, which is read against a reusable 
+              vertical scale placed beside the candle. After feedback, I made sure the candle height aligns precisely with 
+              this ruler so the hour reading feels grounded and accurate. Minutes are represented by wax drips, with each drip 
+              corresponding to five minutes, offering a coarse sense of progress without encouraging constant checking. 
+              Seconds are shown through a subtle flame sway that completes one gentle cycle per second, adding life and 
+              motion without becoming distracting. The neutral color palette and minimal layout were intentional to 
+              reduce visual noise and support sustained attention.</li>
+
             <li><strong>Future work:</strong> This clock could be extended with light interaction, such as clicking the candle to start 
               a timed focus session or adjusting the burn rate to match Pomodoro-style intervals. Another extension would be 
               adding multiple candles to represent parallel tasks or longer-term goals across a day.</li>
@@ -79,23 +80,32 @@
         <p class="small-note">Replace <b>these images</b> with your own sketch evolution images.</p>
         <figure>
           <img src="images/sk2-evolution-1.png" alt="Sketch #A - step 1" class="sketch-image"  />
+
           <figcaption>Step 1 — initial layout and annotated design decisions: This was my first sketch of the candle clock. 
             I used pins placed along the candle to mark hours, which would fall as the candle burned down. 
             The goal was to show time as something that slowly depletes, but this version relied on 
             fixed markers and assumed the candle would be reset after each use.</figcaption>
+
         </figure>
         <figure>
           <img src="images/sk2-evolution-2.jpeg" alt="Sketch #A - step 2" class="sketch-image" />
+
           <figcaption>Step 2 — second layout after peer feedback: After getting feedback, I realized the pin system wasn’t very practical. 
             A peer suggested using a reusable measurement system instead, like a ruler next to the candle, 
             so the clock wouldn’t need to be reset or re-pinned. This pushed the design 
-            toward a continuous way of measuring time rather than discrete markers.</figcaption>
+            toward a continuous way of measuring time rather than discrete markers. Also there was feedback to be able to change the 
+            color of the candle and background so it is more accessible to users which we added.
+          </figcaption>
+
         </figure>
         <figure>
-          <img src="images/sk2-evolution-3.png" alt="Sketch #A - step 3" />
-          <figcaption>Step 3 — refined visuals and annotations: In the final version, the candle’s burn height is read against a reusable vertical scale to show hours. 
-            Minutes are represented by wax drips, and seconds are shown through subtle flame movement. This version keeps the calm, ambient feeling of the original idea 
-            while making the clock easier to read.</figcaption>
+          <img src="images/sk2-evolution-3.png" alt="Sketch #A - step 3" class="sketch-image" />
+
+          <figcaption>Step 3 — In the final version, hours are read directly from the candle’s height against a 
+            fixed vertical scale. Wax drips communicate minutes, and flame motion encodes seconds. This iteration 
+            preserves the calm, ambient feel of the original idea while improving clarity, usability, and alignment 
+            between the visual metaphor and the data.</figcaption>
+
         </figure>
       </div>
     </section>
@@ -106,14 +116,25 @@
 
     <div id="sketch-drawing-sk3" class="sketch-evolution">
       <div class="sketch-narrative" aria-labelledby="sk3-narrative-title">
-        <h3 id="sk3-narrative-title">Sketch narrative</h3>
-        <p class="small-note">Replace this entire block with your own text when submitting.</p>
+        <h3 id="sk3-narrative-title">Day Arc / Routine Tracker Clock : Sketch narrative</h3>
+        <p class="small-note"></p>
         <p>
-          Context: (1–2 sentences)
+          This clock is designed for people who structure their day around routines rather than 
+          exact minutes, such as students, remote workers, or anyone trying to maintain a healthy 
+          daily rhythm. It works well as a “check-in” clock that shows where you are in the day 
+          without feeling urgent.
         <ul>
-          <li><strong>Context:</strong> Who is this for? In what context will it be used?</li>
-          <li><strong>Design decisions:</strong> Explain 2–3 key choices you made and why.</li>
-          <li><strong>Future work:</strong> 1–2 ideas for improvements or extensions.</li>
+          <li><strong>Design decisions:</strong> Instead of a traditional circular clock, I represented the 
+            day as an arc that moves from sunrise to sunset, framing time as a journey rather than a cycle.
+            The current time is displayed prominently in the center for clarity, but the surrounding arc 
+            provides contextual information about morning, afternoon, and night. Sunrise and sunset times 
+            are shown to ground the visualization in the real world, making time feel situational rather 
+            than abstract. The routine tracker below reinforces this idea by mapping time blocks to 
+            activities like sleep, work, or exercise, helping users see how their day flows rather 
+            than just what time it is.</li>
+          <li><strong>Future work:</strong> A future version could allow users to edit routines directly on the 
+            arc or visualize deviations from their planned schedule. Another extension could show weekly 
+            patterns to compare how consistently routines are followed over time</li>
         </ul>
         </p>
       </div>
@@ -121,16 +142,23 @@
       <h3>Sketch evolution</h3>
       <p class="small-note">Replace <b>these images</b> with your own sketch evolution images.</p>
       <figure>
-        <!-- <img src="images/sk3-evolution-1.png" alt="Sketch #B - step 1" /> -->
-        <figcaption>Step 1 — initial layout and annotated design decisions</figcaption>
+        <img src="images/sk3-evolution-1.png" alt="Sketch #B - step 1" class="sketch-image"/>
+        <figcaption>Step 1 — The first sketch focused on representing the day as a continuous arc, 
+          inspired by the movement of the sun across the sky. Time was treated as directional rather 
+          than circular.</figcaption>
       </figure>
       <figure>
-        <!-- <img src="images/sk3-evolution-2.png" alt="Sketch #B - step 2" /> -->
-        <figcaption>Step 2 — second layout after peer feedback</figcaption>
+        <img src="images/sk3-evolution-2.png" alt="Sketch #B - step 2" class="sketch-image"/>
+        <figcaption>Step 2 — Got feedback which suggested adding more grounding details, 
+          such as sunrise and sunset markers, to make the arc feel more meaningful and less abstract. 
+          This helped tie the design to real-world time. Also was told to make it more meaningful to 
+          also be able to add tasks that you can check at a single glance.</figcaption>
       </figure>
       <figure>
-        <!-- <img src="images/sk3-evolution-3.png" alt="Sketch #B - step 3" /> -->
-        <figcaption>Step 3 — refined visuals and annotations</figcaption>
+        <img src="images/sk3-evolution-3.png" alt="Sketch #B - step 3" class="sketch-image" />
+        <figcaption>Step 3 — The final version integrates the arc, current time display based on the region you are in, 
+          and routine tracker into a single system. Each component reinforces the idea of time 
+          as a lived experience rather than a ticking mechanism. We also allow the user to edit the routine tracker as well.</figcaption>
       </figure>
     </div>
   </section>
@@ -141,14 +169,23 @@
 
     <div id="sketch-drawing-sk4" class="sketch-evolution">
       <div class="sketch-narrative" aria-labelledby="sk4-narrative-title">
-        <h3 id="sk4-narrative-title">Sketch narrative</h3>
-        <p class="small-note">Replace this entire block with your own text when submitting.</p>
+        <h3 id="sk4-narrative-title">Compass Clock : Sketch narrative</h3>
+        <p class="small-note"></p>
         <p>
-          Context: (1–2 sentences)
+          This clock is designed for navigation-oriented or exploratory contexts such as hiking, 
+          traveling, or even outdoor mindfulness, where orientation and time awareness are equally important. 
+          It’s meant for moments when knowing “where you are” matters as much as “when you are.”
         <ul>
-          <li><strong>Context:</strong> Who is this for? In what context will it be used?</li>
-          <li><strong>Design decisions:</strong> Explain 2–3 key choices you made and why.</li>
-          <li><strong>Future work:</strong> 1–2 ideas for improvements or extensions.</li>
+          <li><strong>Design decisions:</strong> I merged a compass with an analog clock to challenge the assumption that 
+            time must always be read independently of space. The rotating compass ring 
+            encodes device orientation, while the hour and minute hands represent current time 
+            independently of heading. A fixed red triangle marks the direction you are facing, providing a stable reference point 
+            even as the compass rotates. Seconds are shown using a pulsing dot, which introduces motion without 
+            adding another rotating hand. This layered encoding allows users to read both time and direction at a 
+            glance while reinforcing the idea that time and movement are often experienced together. Was made to be a watch so hikers can use it.</li>
+          <li><strong>Future work:</strong> This clock could be extended by integrating GPS data to show location-based time changes or 
+            by shifting the color palette based on direction or time of day. Another extension could adapt the design for 
+            wearable devices used during outdoor activities.</li>
         </ul>
         </p>
       </div>
@@ -156,16 +193,20 @@
       <h3>Sketch evolution</h3>
       <p class="small-note">Replace <b>these images</b> with your own sketch evolution images.</p>
       <figure>
-        <!-- <img src="images/sk4-evolution-1.png" alt="Sketch #C - step 1" /> -->
-        <figcaption>Step 1 — initial layout and annotated design decisions</figcaption>
+        <img src="images/sk4-evolution-1.png" alt="Sketch #C - step 1" class="sketch-image" />
+        <figcaption>Step 1 — The first sketch explored simply overlaying a clock on top of a compass, 
+          testing whether both systems could coexist visually.</figcaption>
       </figure>
       <figure>
-        <!-- <img src="images/sk4-evolution-2.png" alt="Sketch #C - step 2" /> -->
-        <figcaption>Step 2 — second layout after peer feedback</figcaption>
+        <img src="images/sk4-evolution-2.png" alt="Sketch #C - step 2" class="sketch-image" />
+        <figcaption>Step 2 — Feedback highlighted the need for clearer hierarchy, 
+          leading to the decision to fix the direction indicator and allow the compass ring to rotate independently.
+          It was basically hard to tell what each line on the watch was and how this would work.</figcaption>
       </figure>
       <figure>
-        <!-- <img src="images/sk4-evolution-3.png" alt="Sketch #C - step 3" /> -->
-        <figcaption>Step 3 — refined visuals and annotations</figcaption>
+        <img src="images/sk4-evolution-3.png" alt="Sketch #C - step 3" class="sketch-image" />
+        <figcaption>Step 3 — The final version cleanly separates orientation, time, 
+          and motion into distinct visual layers, making the hybrid design readable while still unconventional.</figcaption>
       </figure>
     </div>
   </section>
