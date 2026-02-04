@@ -3,7 +3,7 @@ registerSketch('sk3', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
-  // Geolocation state
+  // ====== Geolocation state ======
   let userLat = 47.6062;     // fallback
   let userLon = -122.3321;   // fallback
   let locationLine = "Location: (click Enable Location)";
@@ -18,19 +18,32 @@ registerSketch('sk3', function (p) {
     isHover: false
   };
 
-  // Schedule data (internal 24h, displayed 12h)
-  const scheduleBlocks = [
-    { start: 0,  end: 7,  label: "Sleep" },
-    { start: 7,  end: 8,  label: "Morning routine" },
-    { start: 8,  end: 10, label: "Study / Deep work" },
-    { start: 10, end: 12, label: "Class / Lecture" },
-    { start: 12, end: 13, label: "Lunch" },
-    { start: 13, end: 17, label: "Work block" },
-    { start: 17, end: 18, label: "Gym / movement" },
-    { start: 18, end: 20, label: "Dinner + friends" },
-    { start: 20, end: 22, label: "Wind down" },
-    { start: 22, end: 24, label: "Sleep prep" }
+  // ====== Commit 12: editable schedule (stored in localStorage) ======
+  const SCHEDULE_STORAGE_KEY = "sk3_schedule_v1";
+
+  // Default schedule in MINUTES (more flexible than whole hours)
+  const defaultScheduleBlocks = [
+    { startMin: 0 * 60,  endMin: 7 * 60,  label: "Sleep" },
+    { startMin: 7 * 60,  endMin: 8 * 60,  label: "Morning routine" },
+    { startMin: 8 * 60,  endMin: 10 * 60, label: "Study / Deep work" },
+    { startMin: 10 * 60, endMin: 12 * 60, label: "Class / Lecture" },
+    { startMin: 12 * 60, endMin: 13 * 60, label: "Lunch" },
+    { startMin: 13 * 60, endMin: 17 * 60, label: "Work block" },
+    { startMin: 17 * 60, endMin: 18 * 60, label: "Gym / movement" },
+    { startMin: 18 * 60, endMin: 20 * 60, label: "Dinner + friends" },
+    { startMin: 20 * 60, endMin: 22 * 60, label: "Wind down" },
+    { startMin: 22 * 60, endMin: 24 * 60, label: "Sleep prep" }
   ];
+
+  // This is what we actually render/edit
+  let scheduleBlocks = [];
+
+  // Edit-mode UI state
+  let isEditingSchedule = false;
+
+  // Buttons inside the schedule panel (positions are computed each draw)
+  let editButton = { x: 0, y: 0, w: 110, h: 28, isHover: false };
+  let resetButton = { x: 0, y: 0, w: 110, h: 28, isHover: false };
 
   function computeCanvasSize() {
     const w = Math.min(p.windowWidth, MAX_W);
@@ -110,7 +123,7 @@ registerSketch('sk3', function (p) {
     return (n < 10) ? ("0" + n) : ("" + n);
   }
 
-  // Commit 11: 12h time string (HH:MM:SS AM/PM)
+  // 12h time string (HH:MM:SS AM/PM)
   function formatHMS12(h24, m, s) {
     let suffix = "AM";
     let h = h24;
@@ -146,7 +159,6 @@ registerSketch('sk3', function (p) {
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(40);
 
-    // Commit 11: show 12h time with AM/PM
     p.text(formatHMS12(h, m, s), centerX, centerY);
   }
 
@@ -194,7 +206,7 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Geolocation request
+  // ====== Geolocation request ======
   function requestGeolocation() {
     if (!navigator.geolocation) {
       locationLine = "Location: Geolocation not supported";
@@ -356,8 +368,132 @@ registerSketch('sk3', function (p) {
     return (currentMinutes >= sunriseMinutes && currentMinutes < sunsetMinutes);
   }
 
+  // ====== Commit 12: Arc tick marks (sunrise / afternoon / sunset) ======
+  function dayMinutesToArcAngle(mins) {
+    const t = clamp(mins / (24 * 60), 0, 1);
+    return p.lerp(p.PI, p.TWO_PI, t);
+  }
+
+  function drawTickAtMinutes(geom, mins, label, dayMode) {
+    const a = dayMinutesToArcAngle(mins);
+
+    const rx = geom.arcW / 2;
+    const ry = geom.arcH / 2;
+
+    // Point on the arc
+    const x = geom.cx + rx * Math.cos(a);
+    const y = geom.cy + ry * Math.sin(a);
+
+    // Small tick line pointing inward
+    const tickLen = 12;
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+
+    const x1 = x;
+    const y1 = y;
+    const x2 = x - dx * tickLen;
+    const y2 = y - dy * tickLen;
+
+    p.strokeWeight(3);
+
+    // Keep tick readable in both modes
+    if (dayMode) p.stroke(255, 255, 255, 200);
+    else p.stroke(255, 255, 255, 220);
+
+    p.line(x1, y1, x2, y2);
+
+    // Label slightly above the tick (still along the arc)
+    const labelOffset = 18;
+    const lx = x - dx * (tickLen + labelOffset);
+    const ly = y - dy * (tickLen + labelOffset);
+
+    p.noStroke();
+    p.fill(dayMode ? 255 : 255, dayMode ? 255 : 255, dayMode ? 255 : 255, dayMode ? 210 : 230);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(12);
+    p.text(label, lx, ly);
+  }
+
+  function drawArcTimeTicks(geom, sunriseMinutes, sunsetMinutes, dayMode) {
+    // "Afternoon" marker: 3:00 PM local time
+    const afternoonMinutes = 15 * 60;
+
+    drawTickAtMinutes(geom, sunriseMinutes, "Sunrise", dayMode);
+    drawTickAtMinutes(geom, afternoonMinutes, "Afternoon", dayMode);
+    drawTickAtMinutes(geom, sunsetMinutes, "Sunset", dayMode);
+  }
+
   // ====== Tracker helpers ======
-  function formatHour12(h24) {
+  function normalizeScheduleBlocks(blocks) {
+    // Clean, clamp, sort
+    let cleaned = [];
+
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+
+      let s = Number(b.startMin);
+      let e = Number(b.endMin);
+
+      if (isNaN(s) || isNaN(e)) continue;
+
+      s = clamp(Math.round(s), 0, 1440);
+      e = clamp(Math.round(e), 0, 1440);
+
+      if (e <= s) continue;
+
+      const label = String(b.label || "").trim();
+      cleaned.push({ startMin: s, endMin: e, label: label.length > 0 ? label : "Untitled" });
+    }
+
+    cleaned.sort(function (a, b) { return a.startMin - b.startMin; });
+
+    // Limit to avoid clutter
+    if (cleaned.length > 14) cleaned = cleaned.slice(0, 14);
+
+    // If empty, fallback to default
+    if (cleaned.length === 0) cleaned = defaultScheduleBlocks.slice();
+
+    return cleaned;
+  }
+
+  function saveScheduleToStorage() {
+    try {
+      const payload = JSON.stringify(scheduleBlocks);
+      window.localStorage.setItem(SCHEDULE_STORAGE_KEY, payload);
+    } catch (e) {
+      // If storage fails, just ignore (still works in-session)
+    }
+  }
+
+  function loadScheduleFromStorageOrDefault() {
+    try {
+      const raw = window.localStorage.getItem(SCHEDULE_STORAGE_KEY);
+      if (!raw) {
+        scheduleBlocks = normalizeScheduleBlocks(defaultScheduleBlocks);
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        scheduleBlocks = normalizeScheduleBlocks(defaultScheduleBlocks);
+        return;
+      }
+
+      scheduleBlocks = normalizeScheduleBlocks(parsed);
+    } catch (e) {
+      scheduleBlocks = normalizeScheduleBlocks(defaultScheduleBlocks);
+    }
+  }
+
+  function minutesNow() {
+    return (p.hour() * 60) + p.minute();
+  }
+
+  function formatTime12FromMinutes(mins) {
+    const m = clamp(Math.round(mins), 0, 1440);
+    const h24 = Math.floor(m / 60) % 24;
+    const mm = m % 60;
+
     let suffix = "AM";
     let h = h24;
 
@@ -365,27 +501,23 @@ registerSketch('sk3', function (p) {
     h = h % 12;
     if (h === 0) h = 12;
 
-    return h + " " + suffix;
+    return h + ":" + pad2(mm) + " " + suffix;
   }
 
-  function formatRange12(startH, endH) {
-    return formatHour12(startH) + " – " + formatHour12(endH);
+  function formatRange12FromMinutes(startMin, endMin) {
+    return formatTime12FromMinutes(startMin) + " – " + formatTime12FromMinutes(endMin);
   }
 
-  // Commit 11: determine which block is NOW and which is NEXT
+  // Determine which block is NOW and which is NEXT
   function getNowAndNextIndices() {
-    const currentMinutes = (p.hour() * 60) + p.minute();
+    const currentMinutes = minutesNow();
 
     let nowIndex = -1;
 
     for (let i = 0; i < scheduleBlocks.length; i++) {
       const b = scheduleBlocks[i];
 
-      const startMin = b.start * 60;
-      const endMin = b.end * 60;
-
-      // Treat end=24 as 1440. (Also handles normal ranges.)
-      const inside = (currentMinutes >= startMin && currentMinutes < endMin);
+      const inside = (currentMinutes >= b.startMin && currentMinutes < b.endMin);
 
       if (inside) {
         nowIndex = i;
@@ -393,7 +525,6 @@ registerSketch('sk3', function (p) {
       }
     }
 
-    // If nothing matched (shouldn't happen), default to first block
     if (nowIndex === -1) nowIndex = 0;
 
     let nextIndex = nowIndex + 1;
@@ -402,6 +533,100 @@ registerSketch('sk3', function (p) {
     return { nowIndex, nextIndex };
   }
 
+  function parseTimeStringToMinutes(input) {
+    // Accept:
+    // - "7"  -> 07:00
+    // - "7:30" -> 07:30
+    // - "19" -> 19:00
+    // - "19:15" -> 19:15
+    if (input === null || input === undefined) return null;
+
+    const str = String(input).trim();
+    if (str.length === 0) return null;
+
+    // If it's just a number
+    if (str.indexOf(":") === -1) {
+      const h = Number(str);
+      if (isNaN(h)) return null;
+      const hh = clamp(Math.floor(h), 0, 24);
+      return hh * 60;
+    }
+
+    // Has colon
+    const parts = str.split(":");
+    if (parts.length !== 2) return null;
+
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+
+    if (isNaN(h) || isNaN(m)) return null;
+
+    const hh = clamp(Math.floor(h), 0, 24);
+    const mm = clamp(Math.floor(m), 0, 59);
+
+    return (hh * 60) + mm;
+  }
+
+  function tryEditScheduleRow(rowIndex) {
+    if (rowIndex < 0 || rowIndex >= scheduleBlocks.length) return;
+
+    const b = scheduleBlocks[rowIndex];
+
+    const newLabel = window.prompt("Edit label:", b.label);
+    if (newLabel === null) return; // user canceled
+
+    const startStr = window.prompt(
+      "Start time (24h, like 7 or 7:30 or 19:15):",
+      (Math.floor(b.startMin / 60)) + ":" + pad2(b.startMin % 60)
+    );
+    if (startStr === null) return;
+
+    const endStr = window.prompt(
+      "End time (24h, like 8 or 8:00 or 21:30):",
+      (Math.floor(b.endMin / 60)) + ":" + pad2(b.endMin % 60)
+    );
+    if (endStr === null) return;
+
+    const startMin = parseTimeStringToMinutes(startStr);
+    const endMin = parseTimeStringToMinutes(endStr);
+
+    if (startMin === null || endMin === null) return;
+
+    scheduleBlocks[rowIndex] = {
+      startMin: startMin,
+      endMin: endMin,
+      label: String(newLabel).trim()
+    };
+
+    scheduleBlocks = normalizeScheduleBlocks(scheduleBlocks);
+    saveScheduleToStorage();
+  }
+
+  function resetScheduleToDefault() {
+    scheduleBlocks = normalizeScheduleBlocks(defaultScheduleBlocks);
+    saveScheduleToStorage();
+  }
+
+  function pointInRect(px, py, r) {
+    return (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
+  }
+
+  function drawSmallButton(btn, text, dayMode) {
+    btn.isHover = pointInRect(p.mouseX, p.mouseY, btn);
+
+    p.noStroke();
+    if (dayMode) p.fill(255, 255, 255, btn.isHover ? 235 : 200);
+    else p.fill(0, 0, 0, btn.isHover ? 180 : 140);
+
+    p.rect(btn.x, btn.y, btn.w, btn.h, 12);
+
+    p.fill(dayMode ? 30 : 255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(12);
+    p.text(text, btn.x + btn.w / 2, btn.y + btn.h / 2);
+  }
+
+  // ====== Tracker panel ======
   function drawSchedulePanel(dayMode) {
     const panelX = p.width * 0.08;
     const panelY = p.height * 0.70;
@@ -421,16 +646,36 @@ registerSketch('sk3', function (p) {
     p.textSize(18);
     p.text("Today’s tracker", panelX + 14, panelY + 12);
 
+    // Buttons (top-right of panel)
+    editButton.w = 120;
+    editButton.h = 28;
+    editButton.x = panelX + panelW - editButton.w - 14;
+    editButton.y = panelY + 10;
+
+    resetButton.w = 90;
+    resetButton.h = 28;
+    resetButton.x = editButton.x - resetButton.w - 10;
+    resetButton.y = panelY + 10;
+
+    drawSmallButton(resetButton, "Reset", dayMode);
+    drawSmallButton(editButton, isEditingSchedule ? "Done" : "Edit", dayMode);
+
+    if (isEditingSchedule) {
+      p.fill(dayMode ? 30 : 255);
+      p.textAlign(p.LEFT, p.TOP);
+      p.textSize(12);
+      p.text("Edit mode: click a row to change it", panelX + 14, panelY + 34);
+    }
+
     // Inner layout
     const innerX = panelX + 14;
-    const innerY = panelY + 44;
+    const innerY = panelY + 50;
     const innerW = panelW - 28;
-    const innerH = panelH - 58;
+    const innerH = panelH - 64;
 
     const minRowH = 22;
     const rowH = Math.max(minRowH, innerH / scheduleBlocks.length);
 
-    // Commit 11: which rows to highlight
     const indices = getNowAndNextIndices();
 
     // Rows
@@ -448,18 +693,16 @@ registerSketch('sk3', function (p) {
         p.noStroke();
 
         if (dayMode) {
-          // Day: make NOW stronger than NEXT
           if (isNow) p.fill(255, 255, 255, 235);
           else p.fill(255, 255, 255, 205);
         } else {
-          // Night: bright highlight so it pops against dark panel
           if (isNow) p.fill(255, 255, 255, 75);
           else p.fill(255, 255, 255, 45);
         }
 
         p.rect(innerX, y + 2, innerW, rowH - 4, 10);
 
-        // Small left accent bar so it reads quickly
+        // left accent bar
         if (dayMode) p.fill(40, 90, 160, 160);
         else p.fill(200, 220, 255, 170);
 
@@ -471,18 +714,18 @@ registerSketch('sk3', function (p) {
       p.fill(dayMode ? 0 : 255, dayMode ? 0 : 255, dayMode ? 0 : 255, 35);
       p.rect(innerX, y + rowH - 2, innerW, 1);
 
-      // time range column (12h labels)
+      // time range column
       p.fill(dayMode ? 30 : 255);
       p.textAlign(p.LEFT, p.CENTER);
-      p.textSize(14);
-      p.text(formatRange12(b.start, b.end), innerX + 14, y + rowH / 2);
+      p.textSize(13);
+      p.text(formatRange12FromMinutes(b.startMin, b.endMin), innerX + 14, y + rowH / 2);
 
       // label column
       p.textAlign(p.LEFT, p.CENTER);
-      p.textSize(14);
-      p.text("• " + b.label, innerX + 175, y + rowH / 2);
+      p.textSize(13);
+      p.text("• " + b.label, innerX + 220, y + rowH / 2);
 
-      // NOW / NEXT tag on the far right
+      // NOW / NEXT tag
       if (isNow || isNext) {
         const tagText = isNow ? "NOW" : "NEXT";
 
@@ -503,20 +746,65 @@ registerSketch('sk3', function (p) {
         p.text(tagText, tagX + tagW / 2, tagY + tagH / 2);
       }
     }
+
+    // Return geometry so we can detect row clicks in mousePressed
+    return { panelX, panelY, panelW, panelH, innerX, innerY, innerW, innerH, rowH };
   }
 
+  // We'll store this each frame to use for click detection
+  let schedulePanelGeom = null;
+
+  // ====== p5 hooks ======
   p.setup = function () {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
     p.textAlign(p.CENTER, p.CENTER);
+
+    // Load user schedule (or default) once at startup
+    loadScheduleFromStorageOrDefault();
   };
 
   p.mousePressed = function () {
-    const inside =
+    // Geo button
+    const geoInside =
       (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
        p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
 
-    if (inside) requestGeolocation();
+    if (geoInside) {
+      requestGeolocation();
+      return;
+    }
+
+    // Schedule buttons + row editing
+    if (schedulePanelGeom !== null) {
+      // Reset button
+      if (pointInRect(p.mouseX, p.mouseY, resetButton)) {
+        resetScheduleToDefault();
+        return;
+      }
+
+      // Edit toggle button
+      if (pointInRect(p.mouseX, p.mouseY, editButton)) {
+        isEditingSchedule = !isEditingSchedule;
+        return;
+      }
+
+      // If in edit mode, allow clicking a row to edit
+      if (isEditingSchedule) {
+        const g = schedulePanelGeom;
+
+        const insideRows =
+          (p.mouseX >= g.innerX && p.mouseX <= g.innerX + g.innerW &&
+           p.mouseY >= g.innerY && p.mouseY <= g.innerY + g.innerH);
+
+        if (insideRows) {
+          const idx = Math.floor((p.mouseY - g.innerY) / g.rowH);
+          if (idx >= 0 && idx < scheduleBlocks.length) {
+            tryEditScheduleRow(idx);
+          }
+        }
+      }
+    }
   };
 
   p.draw = function () {
@@ -529,6 +817,9 @@ registerSketch('sk3', function (p) {
 
     const geom = drawArcAndHorizon();
 
+    // Commit 12: tick marks on the arc for sunrise / afternoon / sunset
+    drawArcTimeTicks(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes, dayMode);
+
     drawSunOrMoon(geom, dayMode);
     drawCenteredTimePill(geom, dayMode);
 
@@ -537,8 +828,8 @@ registerSketch('sk3', function (p) {
 
     drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes, dayMode);
 
-    // Commit 11: tracker highlights (NOW / NEXT)
-    drawSchedulePanel(dayMode);
+    // Tracker panel (also updates geometry for row-click detection)
+    schedulePanelGeom = drawSchedulePanel(dayMode);
   };
 
   p.windowResized = function () {
