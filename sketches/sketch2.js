@@ -1,5 +1,5 @@
 // Candle Clock — sketch2
-// Anchor flame to wick tip + keep 1 sway/second
+// Commit #16: Align hour ruler to candle body + cap visible drips + show drip count in legend
 
 registerSketch('sk2', function (p) {
 
@@ -113,6 +113,8 @@ registerSketch('sk2', function (p) {
 
     // -----------------------------
     // MINUTE DRIP COUNT (5-minute chunks) ONLY
+    // - Cap visible drips so it stays readable near 55–59 minutes.
+    // - Still show exact dripCount in the legend.
     // -----------------------------
     let dripCount = Math.floor(m / 5);
 
@@ -123,8 +125,18 @@ registerSketch('sk2', function (p) {
     let dripMinY = currentCandleTopY + 12;
     let dripMaxY = candleBottomY - 14;
 
-    for (let i = 0; i < dripCount; i++) {
-      let dripY = dripStartY + i * dripSpacing;
+    // Cap how many drips we draw so they don't crowd at minute 50–59
+    let maxVisibleDrips = 6;
+    let startIndex = 0;
+    if (dripCount > maxVisibleDrips) {
+      startIndex = dripCount - maxVisibleDrips;
+    }
+
+    for (let i = startIndex; i < dripCount; i++) {
+      // local index controls vertical placement when we’re only drawing the most recent drips
+      let localIndex = i - startIndex;
+
+      let dripY = dripStartY + localIndex * dripSpacing;
 
       if (dripY < dripMinY) dripY = dripMinY;
       if (dripY > dripMaxY) break;
@@ -177,7 +189,7 @@ registerSketch('sk2', function (p) {
     let innerFlameH = 14 + flicker * 4;
     let innerFlameW = 8 + flicker * 2.5;
 
-    // Flame base is slightly ABOVE the wick tip
+    // Flame base anchored to wick tip
     let flameBaseY = wickTopY;
 
     // --- OUTER FLAME ---
@@ -200,15 +212,24 @@ registerSketch('sk2', function (p) {
     );
 
     // -----------------------------
-    // PINS + LABELS (hours)
+    // PINS + LABELS (hours) — aligned to candle’s visible body
     // -----------------------------
     let pinCount = 12;
-    let pinSpacing = candleHeight / pinCount;
+
+    // Padding so pins line up with the candle’s visible start/end (rounded corners + rim)
+    let hourTopPadding = 18;
+    let hourBottomPadding = 18;
+
+    let hourTopY = originalCandleTopY + hourTopPadding;
+    let hourBottomY = candleBottomY - hourBottomPadding;
+
+    // Use pinCount - 1 so the last pin lands exactly on hourBottomY
+    let pinSpacing = (hourBottomY - hourTopY) / (pinCount - 1);
 
     p.textSize(12);
 
     for (let i = 0; i < pinCount; i++) {
-      let y = originalCandleTopY + i * pinSpacing;
+      let y = hourTopY + i * pinSpacing;
       let x = cx + candleWidth / 2 + 14;
 
       p.noStroke();
@@ -246,6 +267,10 @@ registerSketch('sk2', function (p) {
     p.fill(80);
     p.textSize(13);
     p.text("Hours", legendX, legendY);
+
+    // Show exact minute encoding even when we cap visible drips
+    p.textSize(12);
+    p.text("Wax Drips Count: " + dripCount + " (5 min each)", legendX, legendY + 18);
   };
 
   p.windowResized = function () { };
