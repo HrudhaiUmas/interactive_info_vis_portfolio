@@ -1,5 +1,5 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 4: add fixed top index marker
+// Commit 5: add compass ring (ticks + N/E/S/W) STATIC (no rotation yet)
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -57,18 +57,52 @@ registerSketch('sk4', function (p) {
     p.circle(cx, cy, r * 1.82);
   }
 
-  // ====== Commit 4: Fixed top index marker ======
+  // ====== Fixed top index marker ======
   function drawFixedTopIndex(cx, cy, r) {
-    // This is a "housing marker" that stays fixed on the screen.
-    // Later, the compass ring will rotate underneath it.
     p.noStroke();
     p.fill(220, 60, 60, 220);
 
     p.triangle(
-      cx, cy - r * 1.02,              // tip (top)
-      cx - r * 0.05, cy - r * 0.88,   // bottom-left
-      cx + r * 0.05, cy - r * 0.88    // bottom-right
+      cx, cy - r * 1.02,
+      cx - r * 0.05, cy - r * 0.88,
+      cx + r * 0.05, cy - r * 0.88
     );
+  }
+
+  // ====== Commit 5: Static compass ring ======
+  function drawCompassRingStatic(cx, cy, r) {
+    // Draw compass ticks + N/E/S/W without any rotation yet.
+    // Next commit(s) will rotate this ring based on heading.
+
+    // Tick marks every 15 degrees
+    p.stroke(0, 0, 0, 60);
+    p.strokeWeight(2);
+
+    for (let a = 0; a < 360; a += 15) {
+      const ang = p.radians(a) - p.HALF_PI; // 0° at top
+
+      const isCardinal = (a % 90 === 0);
+      const outerR = r * 0.92;
+      const innerR = isCardinal ? r * 0.80 : r * 0.84;
+
+      const x1 = cx + outerR * Math.cos(ang);
+      const y1 = cy + outerR * Math.sin(ang);
+      const x2 = cx + innerR * Math.cos(ang);
+      const y2 = cy + innerR * Math.sin(ang);
+
+      p.line(x1, y1, x2, y2);
+    }
+
+    // Cardinal letters
+    p.noStroke();
+    p.fill(25);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(Math.max(18, r * 0.12));
+
+    p.text("N", cx, cy - r * 0.95);
+    p.text("E", cx + r * 0.95, cy);
+    p.text("S", cx, cy + r * 0.95);
+    p.text("W", cx - r * 0.95, cy);
   }
 
   p.setup = function () {
@@ -91,9 +125,10 @@ registerSketch('sk4', function (p) {
     const r = Math.min(p.width, p.height) * 0.28;
 
     drawOuterShell(cx, cy, r);
-
-    // Commit 4: fixed index marker
     drawFixedTopIndex(cx, cy, r);
+
+    // Commit 5: static compass ring
+    drawCompassRingStatic(cx, cy, r);
   };
 
   p.windowResized = function () {
