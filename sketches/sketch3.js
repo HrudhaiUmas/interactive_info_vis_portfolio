@@ -46,25 +46,60 @@ registerSketch('sk3', function (p) {
 
   // Commit 4: arc + horizon baseline
   function drawArcAndHorizon() {
-    // Arc geometry (kept consistent so future features align)
     const cx = p.width * 0.5;
     const cy = p.height * 0.62;
     const arcW = p.width * 0.78;
     const arcH = p.height * 0.78;
 
-    // Arc (left horizon -> right horizon)
     p.noFill();
     p.stroke(255, 255, 255, 130);
     p.strokeWeight(3);
     p.arc(cx, cy, arcW, arcH, p.PI, p.TWO_PI);
 
-    // Horizon line
     p.stroke(0, 0, 0, 60);
     p.strokeWeight(2);
     p.line(p.width * 0.12, cy, p.width * 0.88, cy);
 
-    // Return geometry so later commits can position elements precisely
-    return { cx, cy, arcW, arcH };
+    const topY = cy - (arcH / 2);
+    const horizonY = cy;
+
+    return { cx, cy, arcW, arcH, topY, horizonY };
+  }
+
+  // Commit 5: centered HH:MM:SS time pill
+  function pad2(n) {
+    return (n < 10) ? ("0" + n) : ("" + n);
+  }
+
+  function formatHMS(h, m, s) {
+    return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+  }
+
+  function drawCenteredTimePill(geom) {
+    const h = p.hour();
+    const m = p.minute();
+    const s = p.second();
+
+    // Center exactly between the top of the arc and the horizon
+    const centerX = geom.cx;
+    const centerY = (geom.topY + geom.horizonY) / 2;
+
+    const boxW = p.width * 0.62;
+    const boxH = 70;
+
+    const x = centerX - (boxW / 2);
+    const y = centerY - (boxH / 2);
+
+    // pill background
+    p.noStroke();
+    p.fill(0, 0, 0, 160);
+    p.rect(x, y, boxW, boxH, 18);
+
+    // time text
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(40);
+    p.text(formatHMS(h, m, s), centerX, centerY);
   }
 
   p.setup = function () {
@@ -72,7 +107,6 @@ registerSketch('sk3', function (p) {
     p.createCanvas(s.w, s.h);
 
     p.textAlign(p.CENTER, p.CENTER);
-    p.textSize(18);
   };
 
   p.draw = function () {
@@ -80,11 +114,7 @@ registerSketch('sk3', function (p) {
     drawStars();
 
     const geom = drawArcAndHorizon();
-
-    // Placeholder label so you know it's running
-    p.noStroke();
-    p.fill(255);
-    p.text("Clock B (sk3) — arc + horizon", geom.cx, p.height * 0.18);
+    drawCenteredTimePill(geom);
   };
 
   p.windowResized = function () {
