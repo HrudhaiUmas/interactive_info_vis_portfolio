@@ -1,5 +1,5 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 2: add always-on digital time pill (12-hour format)
+// Commit 3: draw compass shell (bezel + face)
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -34,16 +34,30 @@ registerSketch('sk4', function (p) {
     const x = (p.width - pillW) / 2;
     const y = p.height * 0.07;
 
-    // pill background
     p.noStroke();
     p.fill(255, 255, 255, 220);
     p.rect(x, y, pillW, pillH, 18);
 
-    // pill text
     p.fill(25);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(22);
     p.text(timeStr, p.width / 2, y + pillH / 2);
+  }
+
+  // ====== Commit 3: Compass shell ======
+  function drawOuterShell(cx, cy, r) {
+    // Outer bezel
+    p.noStroke();
+    p.fill(255, 255, 255, 220);
+    p.circle(cx, cy, r * 2.18);
+
+    // Soft shadow ring
+    p.fill(0, 0, 0, 40);
+    p.circle(cx, cy, r * 2.08);
+
+    // Inner face
+    p.fill(255, 255, 255, 215);
+    p.circle(cx, cy, r * 1.82);
   }
 
   p.setup = function () {
@@ -56,12 +70,21 @@ registerSketch('sk4', function (p) {
     // background
     p.background(210, 220, 230);
 
-    // current time (updates every frame)
+    // current time
     const h = p.hour();
     const m = p.minute();
     const s = p.second();
 
+    // time pill
     drawDigitalTimePill(formatTime12(h, m, s));
+
+    // compass layout
+    const cx = p.width / 2;
+    const cy = p.height * 0.56;
+    const r = Math.min(p.width, p.height) * 0.28;
+
+    // shell
+    drawOuterShell(cx, cy, r);
   };
 
   p.windowResized = function () {
