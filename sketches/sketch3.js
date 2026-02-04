@@ -80,7 +80,6 @@ registerSketch('sk3', function (p) {
     const m = p.minute();
     const s = p.second();
 
-    // Center exactly between the top of the arc and the horizon
     const centerX = geom.cx;
     const centerY = (geom.topY + geom.horizonY) / 2;
 
@@ -90,22 +89,77 @@ registerSketch('sk3', function (p) {
     const x = centerX - (boxW / 2);
     const y = centerY - (boxH / 2);
 
-    // pill background
     p.noStroke();
     p.fill(0, 0, 0, 160);
     p.rect(x, y, boxW, boxH, 18);
 
-    // time text
     p.fill(255);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(40);
     p.text(formatHMS(h, m, s), centerX, centerY);
   }
 
+  // Commit 6: sun/moon orbit along the arc by time-of-day
+  function getDayFraction() {
+    const h = p.hour();
+    const m = p.minute();
+    const s = p.second();
+
+    const totalSeconds = (h * 3600) + (m * 60) + s;
+    return totalSeconds / (24 * 3600); // 0..1
+  }
+
+  function isDaytimeSimple() {
+    // Temporary simple rule (we will replace with real sunrise/sunset later)
+    const h = p.hour();
+    return (h >= 6 && h < 18);
+  }
+
+  function drawSunOrMoon(geom) {
+    const dayFraction = getDayFraction();
+
+    // Map 0..1 dayFraction onto arc angles PI..TWO_PI
+    const angle = p.lerp(p.PI, p.TWO_PI, dayFraction);
+
+    const x = geom.cx + (geom.arcW / 2) * Math.cos(angle);
+    const y = geom.cy + (geom.arcH / 2) * Math.sin(angle);
+
+    const dayMode = isDaytimeSimple();
+
+    p.noStroke();
+
+    if (dayMode) {
+      // Sun
+      p.fill(255, 210, 60);
+      p.circle(x, y, 46);
+
+      // Rays (slight motion so it feels alive)
+      p.stroke(255, 210, 60, 150);
+      p.strokeWeight(2);
+
+      const rays = 10;
+      for (let i = 0; i < rays; i++) {
+        const a = (p.TWO_PI * i) / rays + (p.frameCount * 0.01);
+        const x1 = x + 30 * Math.cos(a);
+        const y1 = y + 30 * Math.sin(a);
+        const x2 = x + 42 * Math.cos(a);
+        const y2 = y + 42 * Math.sin(a);
+        p.line(x1, y1, x2, y2);
+      }
+    } else {
+      // Moon (crescent)
+      p.fill(230, 230, 255);
+      p.circle(x, y, 40);
+
+      // Cut-out to form crescent
+      p.fill(15, 25, 55);
+      p.circle(x + 10, y - 5, 36);
+    }
+  }
+
   p.setup = function () {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
-
     p.textAlign(p.CENTER, p.CENTER);
   };
 
@@ -114,6 +168,11 @@ registerSketch('sk3', function (p) {
     drawStars();
 
     const geom = drawArcAndHorizon();
+
+    // New feature: sun/moon moving along arc
+    drawSunOrMoon(geom);
+
+    // Time pill on top
     drawCenteredTimePill(geom);
   };
 
