@@ -1,12 +1,11 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 6: add heading state with mouse fallback rotation + heading status text
-// NOTE: ring is STILL static in this commit; we only add the heading variable + UI.
+// Commit 7: rotate compass ring using headingDeg (mouse fallback still drives heading)
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
-  // ====== Commit 6: heading state (mouse fallback) ======
+  // ====== Heading state (mouse fallback) ======
   let headingDeg = 0;           // 0 = North
   let hasOrientation = false;   // sensor not wired yet
   let useMouseFallback = true;  // desktop fallback
@@ -50,7 +49,7 @@ registerSketch('sk4', function (p) {
     p.text(timeStr, p.width / 2, y + pillH / 2);
   }
 
-  // ====== Commit 6: heading status line ======
+  // ====== Heading status line ======
   function drawHeadingStatusLine() {
     p.fill(0, 0, 0, 110);
     p.textAlign(p.CENTER, p.CENTER);
@@ -88,8 +87,15 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Static compass ring (no rotation yet) ======
-  function drawCompassRingStatic(cx, cy, r) {
+  // ====== Commit 7: Rotating compass ring ======
+  function drawCompassRingRotating(cx, cy, r) {
+    // Rotate the ring opposite the heading.
+    // If you face East (heading 90), the compass card should rotate -90.
+    p.push();
+    p.translate(cx, cy);
+    p.rotate(p.radians(-headingDeg));
+
+    // Ticks every 15 degrees
     p.stroke(0, 0, 0, 60);
     p.strokeWeight(2);
 
@@ -100,23 +106,26 @@ registerSketch('sk4', function (p) {
       const outerR = r * 0.92;
       const innerR = isCardinal ? r * 0.80 : r * 0.84;
 
-      const x1 = cx + outerR * Math.cos(ang);
-      const y1 = cy + outerR * Math.sin(ang);
-      const x2 = cx + innerR * Math.cos(ang);
-      const y2 = cy + innerR * Math.sin(ang);
+      const x1 = outerR * Math.cos(ang);
+      const y1 = outerR * Math.sin(ang);
+      const x2 = innerR * Math.cos(ang);
+      const y2 = innerR * Math.sin(ang);
 
       p.line(x1, y1, x2, y2);
     }
 
+    // Cardinal letters
     p.noStroke();
     p.fill(25);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(Math.max(18, r * 0.12));
 
-    p.text("N", cx, cy - r * 0.95);
-    p.text("E", cx + r * 0.95, cy);
-    p.text("S", cx, cy + r * 0.95);
-    p.text("W", cx - r * 0.95, cy);
+    p.text("N", 0, -r * 0.95);
+    p.text("E", r * 0.95, 0);
+    p.text("S", 0, r * 0.95);
+    p.text("W", -r * 0.95, 0);
+
+    p.pop();
   }
 
   p.setup = function () {
@@ -128,7 +137,7 @@ registerSketch('sk4', function (p) {
   p.draw = function () {
     p.background(210, 220, 230);
 
-    // Commit 6: update headingDeg using mouse fallback (desktop)
+    // Mouse fallback heading
     if (useMouseFallback) {
       const t = p.constrain(p.mouseX / p.width, 0, 1);
       headingDeg = 360 * t;
@@ -148,8 +157,8 @@ registerSketch('sk4', function (p) {
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
 
-    // Still static in commit 6 (rotation happens later)
-    drawCompassRingStatic(cx, cy, r);
+    // Commit 7: rotating compass ring
+    drawCompassRingRotating(cx, cy, r);
   };
 
   p.windowResized = function () {
