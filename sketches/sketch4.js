@@ -1,17 +1,16 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 9: wire deviceorientation to headingDeg (live sensor input when available)
-// If sensor works -> hasOrientation true and mouse fallback turns off automatically.
+// Commit 10: add fixed clock dial (ticks + hour numbers) that does NOT rotate
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
   // ====== Heading state ======
-  let headingDeg = 0;            // 0 = North
-  let hasOrientation = false;    // becomes true when sensor values are received
-  let useMouseFallback = true;   // desktop fallback; turns off when sensor input arrives
+  let headingDeg = 0;
+  let hasOrientation = false;
+  let useMouseFallback = true;
 
-  // ====== Orientation button state ======
+  // ====== Orientation button ======
   let orientButton = {
     x: 16,
     y: 16,
@@ -27,7 +26,7 @@ registerSketch('sk4', function (p) {
     return { w, h };
   }
 
-  // ====== Time helpers (12-hour digital clock) ======
+  // ====== Time helpers ======
   function pad2(n) {
     return (n < 10) ? ("0" + n) : ("" + n);
   }
@@ -60,7 +59,6 @@ registerSketch('sk4', function (p) {
     p.text(timeStr, p.width / 2, y + pillH / 2);
   }
 
-  // ====== Heading status line ======
   function drawHeadingStatusLine() {
     p.fill(0, 0, 0, 110);
     p.textAlign(p.CENTER, p.CENTER);
@@ -73,7 +71,7 @@ registerSketch('sk4', function (p) {
     p.text(status, p.width / 2, p.height * 0.16);
   }
 
-  // ====== Commit 9: Orientation helpers ======
+  // ====== Orientation helpers ======
   function normalizeDeg(d) {
     let v = d % 360;
     if (v < 0) v += 360;
@@ -81,24 +79,19 @@ registerSketch('sk4', function (p) {
   }
 
   function handleDeviceOrientation(event) {
-    // Most browsers provide event.alpha in degrees (0..360)
     if (event && typeof event.alpha === "number") {
       headingDeg = normalizeDeg(event.alpha);
       hasOrientation = true;
-
-      // Once we get real sensor values, stop using the mouse fallback
       useMouseFallback = false;
     }
   }
 
-  // ====== Permission request (iOS needs user gesture) ======
   function requestOrientationPermission() {
     if (typeof DeviceOrientationEvent === "undefined") {
       orientButton.label = "No orientation sensor";
       return;
     }
 
-    // iOS 13+ requires permission request
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
       DeviceOrientationEvent.requestPermission()
         .then(function (response) {
@@ -117,13 +110,11 @@ registerSketch('sk4', function (p) {
           useMouseFallback = true;
         });
     } else {
-      // Non-iOS browsers generally allow it without a permission prompt
       window.addEventListener("deviceorientation", handleDeviceOrientation, true);
       orientButton.label = "Orientation enabled";
     }
   }
 
-  // ====== Draw the in-canvas button ======
   function drawOrientationButton() {
     orientButton.isHover =
       (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
@@ -152,7 +143,6 @@ registerSketch('sk4', function (p) {
     p.circle(cx, cy, r * 1.82);
   }
 
-  // ====== Fixed top index marker ======
   function drawFixedTopIndex(cx, cy, r) {
     p.noStroke();
     p.fill(220, 60, 60, 220);
@@ -164,12 +154,10 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Rotating compass ring (now can rotate from sensor OR mouse) ======
+  // ====== Rotating compass ring ======
   function drawCompassRingRotating(cx, cy, r) {
     p.push();
     p.translate(cx, cy);
-
-    // real compass card behavior: rotate opposite heading
     p.rotate(p.radians(-headingDeg));
 
     p.stroke(0, 0, 0, 60);
@@ -203,12 +191,46 @@ registerSketch('sk4', function (p) {
     p.pop();
   }
 
+  // ====== Commit 10: Fixed clock dial (does NOT rotate) ======
+  function drawFixedClockDial(cx, cy, r) {
+    // 60 tick marks: major every 5, minor otherwise
+    p.stroke(0, 0, 0, 55);
+    p.strokeWeight(2);
+
+    for (let i = 0; i < 60; i++) {
+      const ang = p.radians(i * 6) - p.HALF_PI; // place tick around circle
+
+      const isMajor = (i % 5 === 0);
+      const outerR = r * 0.72;
+      const innerR = isMajor ? r * 0.60 : r * 0.66;
+
+      const x1 = cx + outerR * Math.cos(ang);
+      const y1 = cy + outerR * Math.sin(ang);
+      const x2 = cx + innerR * Math.cos(ang);
+      const y2 = cy + innerR * Math.sin(ang);
+
+      p.line(x1, y1, x2, y2);
+    }
+
+    // Hour numbers 1..12 (fixed)
+    p.noStroke();
+    p.fill(0, 0, 0, 130);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(Math.max(12, r * 0.08));
+
+    for (let hr = 1; hr <= 12; hr++) {
+      const ang = p.map(hr % 12, 0, 12, -p.HALF_PI, p.TWO_PI - p.HALF_PI);
+      const x = cx + (r * 0.50) * Math.cos(ang);
+      const y = cy + (r * 0.50) * Math.sin(ang);
+      p.text(String(hr), x, y);
+    }
+  }
+
   p.setup = function () {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
     p.textAlign(p.CENTER, p.CENTER);
 
-    // For non-iOS browsers, we can attach immediately (no permission API)
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission !== "function") {
       window.addEventListener("deviceorientation", handleDeviceOrientation, true);
@@ -228,7 +250,7 @@ registerSketch('sk4', function (p) {
   p.draw = function () {
     p.background(210, 220, 230);
 
-    // Mouse fallback only if we do NOT have sensor input
+    // Mouse fallback only if no sensor
     if (useMouseFallback) {
       const t = p.constrain(p.mouseX / p.width, 0, 1);
       headingDeg = 360 * t;
@@ -250,8 +272,11 @@ registerSketch('sk4', function (p) {
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
 
-    // Commit 9: headingDeg now can come from live orientation
+    // Compass ring rotates
     drawCompassRingRotating(cx, cy, r);
+
+    // Commit 10: clock dial is fixed (does not rotate)
+    drawFixedClockDial(cx, cy, r);
   };
 
   p.windowResized = function () {
