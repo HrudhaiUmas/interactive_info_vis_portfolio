@@ -18,7 +18,7 @@ registerSketch('sk3', function (p) {
     isHover: false
   };
 
-  // Commit 10: schedule data (internal 24h, displayed 12h)
+  // Schedule data (internal 24h, displayed 12h)
   const scheduleBlocks = [
     { start: 0,  end: 7,  label: "Sleep" },
     { start: 7,  end: 8,  label: "Morning routine" },
@@ -105,13 +105,21 @@ registerSketch('sk3', function (p) {
     return { cx, cy, arcW, arcH, topY, horizonY };
   }
 
-  // Time pill helpers
+  // ====== Time formatting helpers ======
   function pad2(n) {
     return (n < 10) ? ("0" + n) : ("" + n);
   }
 
-  function formatHMS(h, m, s) {
-    return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+  // Commit 11: 12h time string (HH:MM:SS AM/PM)
+  function formatHMS12(h24, m, s) {
+    let suffix = "AM";
+    let h = h24;
+
+    if (h >= 12) suffix = "PM";
+    h = h % 12;
+    if (h === 0) h = 12;
+
+    return pad2(h) + ":" + pad2(m) + ":" + pad2(s) + " " + suffix;
   }
 
   function drawCenteredTimePill(geom, dayMode) {
@@ -137,7 +145,9 @@ registerSketch('sk3', function (p) {
     p.fill(dayMode ? 30 : 255);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(40);
-    p.text(formatHMS(h, m, s), centerX, centerY);
+
+    // Commit 11: show 12h time with AM/PM
+    p.text(formatHMS12(h, m, s), centerX, centerY);
   }
 
   // Sun/moon orbit
@@ -346,7 +356,7 @@ registerSketch('sk3', function (p) {
     return (currentMinutes >= sunriseMinutes && currentMinutes < sunsetMinutes);
   }
 
-  // ====== Commit 10: tracker layout ======
+  // ====== Tracker helpers ======
   function formatHour12(h24) {
     let suffix = "AM";
     let h = h24;
@@ -360,6 +370,36 @@ registerSketch('sk3', function (p) {
 
   function formatRange12(startH, endH) {
     return formatHour12(startH) + " – " + formatHour12(endH);
+  }
+
+  // Commit 11: determine which block is NOW and which is NEXT
+  function getNowAndNextIndices() {
+    const currentMinutes = (p.hour() * 60) + p.minute();
+
+    let nowIndex = -1;
+
+    for (let i = 0; i < scheduleBlocks.length; i++) {
+      const b = scheduleBlocks[i];
+
+      const startMin = b.start * 60;
+      const endMin = b.end * 60;
+
+      // Treat end=24 as 1440. (Also handles normal ranges.)
+      const inside = (currentMinutes >= startMin && currentMinutes < endMin);
+
+      if (inside) {
+        nowIndex = i;
+        break;
+      }
+    }
+
+    // If nothing matched (shouldn't happen), default to first block
+    if (nowIndex === -1) nowIndex = 0;
+
+    let nextIndex = nowIndex + 1;
+    if (nextIndex >= scheduleBlocks.length) nextIndex = 0;
+
+    return { nowIndex, nextIndex };
   }
 
   function drawSchedulePanel(dayMode) {
@@ -390,6 +430,9 @@ registerSketch('sk3', function (p) {
     const minRowH = 22;
     const rowH = Math.max(minRowH, innerH / scheduleBlocks.length);
 
+    // Commit 11: which rows to highlight
+    const indices = getNowAndNextIndices();
+
     // Rows
     for (let i = 0; i < scheduleBlocks.length; i++) {
       const b = scheduleBlocks[i];
@@ -397,21 +440,68 @@ registerSketch('sk3', function (p) {
 
       if (y + rowH > panelY + panelH - 10) break;
 
-      // light divider line
+      const isNow = (i === indices.nowIndex);
+      const isNext = (i === indices.nextIndex);
+
+      // Row background highlight (NOW / NEXT)
+      if (isNow || isNext) {
+        p.noStroke();
+
+        if (dayMode) {
+          // Day: make NOW stronger than NEXT
+          if (isNow) p.fill(255, 255, 255, 235);
+          else p.fill(255, 255, 255, 205);
+        } else {
+          // Night: bright highlight so it pops against dark panel
+          if (isNow) p.fill(255, 255, 255, 75);
+          else p.fill(255, 255, 255, 45);
+        }
+
+        p.rect(innerX, y + 2, innerW, rowH - 4, 10);
+
+        // Small left accent bar so it reads quickly
+        if (dayMode) p.fill(40, 90, 160, 160);
+        else p.fill(200, 220, 255, 170);
+
+        p.rect(innerX + 4, y + 8, 6, rowH - 16, 4);
+      }
+
+      // Divider line
       p.noStroke();
       p.fill(dayMode ? 0 : 255, dayMode ? 0 : 255, dayMode ? 0 : 255, 35);
       p.rect(innerX, y + rowH - 2, innerW, 1);
 
-      // time range column
+      // time range column (12h labels)
       p.fill(dayMode ? 30 : 255);
       p.textAlign(p.LEFT, p.CENTER);
       p.textSize(14);
-      p.text(formatRange12(b.start, b.end), innerX + 10, y + rowH / 2);
+      p.text(formatRange12(b.start, b.end), innerX + 14, y + rowH / 2);
 
       // label column
       p.textAlign(p.LEFT, p.CENTER);
       p.textSize(14);
-      p.text("• " + b.label, innerX + 170, y + rowH / 2);
+      p.text("• " + b.label, innerX + 175, y + rowH / 2);
+
+      // NOW / NEXT tag on the far right
+      if (isNow || isNext) {
+        const tagText = isNow ? "NOW" : "NEXT";
+
+        const tagW = 52;
+        const tagH = 18;
+        const tagX = innerX + innerW - tagW - 10;
+        const tagY = y + (rowH / 2) - (tagH / 2);
+
+        p.noStroke();
+        if (dayMode) p.fill(20, 35, 70, 170);
+        else p.fill(0, 0, 0, 150);
+
+        p.rect(tagX, tagY, tagW, tagH, 9);
+
+        p.fill(255);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.textSize(11);
+        p.text(tagText, tagX + tagW / 2, tagY + tagH / 2);
+      }
     }
   }
 
@@ -447,7 +537,7 @@ registerSketch('sk3', function (p) {
 
     drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes, dayMode);
 
-    // Commit 10: tracker layout panel
+    // Commit 11: tracker highlights (NOW / NEXT)
     drawSchedulePanel(dayMode);
   };
 
