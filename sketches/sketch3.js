@@ -192,19 +192,16 @@ registerSketch('sk3', function (p) {
 
   // In-canvas button drawing
   function drawGeoButton() {
-    // Hover detection
     geoButton.isHover =
       (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
        p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
 
-    // Button background
     p.noStroke();
     if (geoButton.isHover) p.fill(255, 255, 255, 220);
     else p.fill(255, 255, 255, 180);
 
     p.rect(geoButton.x, geoButton.y, geoButton.w, geoButton.h, 12);
 
-    // Button text
     p.fill(20);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(12);
@@ -227,21 +224,123 @@ registerSketch('sk3', function (p) {
     p.text(locationLine, 22, 73);
   }
 
+  // ====== Commit 8: Sunrise/Sunset computation (local, no API) ======
+  function degToRad(d) { return d * (Math.PI / 180); }
+  function radToDeg(r) { return r * (180 / Math.PI); }
+
+  function dayOfYear(dateObj) {
+    const start = new Date(dateObj.getFullYear(), 0, 0);
+    const diff = dateObj - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+  }
+
+  function clamp(v, lo, hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+  }
+
+  // Returns { sunriseMinutes, sunsetMinutes } in LOCAL minutes-from-midnight
+  function computeSunriseSunsetMinutes(lat, lon, dateObj) {
+    const zenith = 90.833; // standard sunrise/sunset zenith
+    const N = dayOfYear(dateObj);
+    const lngHour = lon / 15;
+
+    function calc(isSunrise) {
+      const t = N + ((isSunrise ? 6 : 18) - lngHour) / 24;
+
+      const M = (0.9856 * t) - 3.289;
+
+      let L = M + (1.916 * Math.sin(degToRad(M))) + (0.020 * Math.sin(degToRad(2 * M))) + 282.634;
+      L = (L % 360 + 360) % 360;
+
+      let RA = radToDeg(Math.atan(0.91764 * Math.tan(degToRad(L))));
+      RA = (RA % 360 + 360) % 360;
+
+      const Lquadrant = Math.floor(L / 90) * 90;
+      const RAquadrant = Math.floor(RA / 90) * 90;
+      RA = RA + (Lquadrant - RAquadrant);
+      RA = RA / 15;
+
+      const sinDec = 0.39782 * Math.sin(degToRad(L));
+      const cosDec = Math.cos(Math.asin(sinDec));
+
+      const cosH =
+        (Math.cos(degToRad(zenith)) - (sinDec * Math.sin(degToRad(lat)))) /
+        (cosDec * Math.cos(degToRad(lat)));
+
+      const safeCosH = clamp(cosH, -1, 1);
+
+      let H = Math.acos(safeCosH);
+      if (isSunrise) H = (2 * Math.PI) - H;
+      H = radToDeg(H);
+      H = H / 15;
+
+      const T = H + RA - (0.06571 * t) - 6.622;
+
+      let UT = T - lngHour;
+      UT = (UT % 24 + 24) % 24;
+
+      const tzOffsetMinutes = -dateObj.getTimezoneOffset(); // local = UTC + offset
+      const localHours = UT + (tzOffsetMinutes / 60);
+      const localHoursNorm = (localHours % 24 + 24) % 24;
+
+      return Math.round(localHoursNorm * 60);
+    }
+
+    return {
+      sunriseMinutes: calc(true),
+      sunsetMinutes: calc(false)
+    };
+  }
+
+  function formatMinutesTo12h(mins) {
+    const h24 = Math.floor(mins / 60);
+    const mm = mins % 60;
+
+    let suffix = "AM";
+    let h = h24;
+    if (h >= 12) suffix = "PM";
+    h = h % 12;
+    if (h === 0) h = 12;
+
+    return h + ":" + pad2(mm) + " " + suffix;
+  }
+
+  function drawSunInfoLine(geom, sunriseMinutes, sunsetMinutes) {
+    const centerX = geom.cx;
+    const centerY = (geom.topY + geom.horizonY) / 2;
+
+    // Place line just below time pill
+    const y = centerY + 52;
+
+    const info =
+      "Sunrise: " + formatMinutesTo12h(sunriseMinutes) +
+      "  •  Sunset: " + formatMinutesTo12h(sunsetMinutes);
+
+    p.noStroke();
+    p.fill(0, 0, 0, 140);
+    p.rect(p.width * 0.17, y - 14, p.width * 0.66, 28, 14);
+
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(13);
+    p.text(info, centerX, y);
+  }
+
   p.setup = function () {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
     p.textAlign(p.CENTER, p.CENTER);
   };
 
-  // Click handler for in-canvas button
   p.mousePressed = function () {
     const inside =
       (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
        p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
 
-    if (inside) {
-      requestGeolocation();
-    }
+    if (inside) requestGeolocation();
   };
 
   p.draw = function () {
@@ -253,9 +352,13 @@ registerSketch('sk3', function (p) {
     drawSunOrMoon(geom);
     drawCenteredTimePill(geom);
 
-    // New: in-canvas button + location line
     drawGeoButton();
     drawLocationLine();
+
+    // Commit 8: compute + display sunrise/sunset
+    const now = new Date();
+    const sunTimes = computeSunriseSunsetMinutes(userLat, userLon, now);
+    drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes);
   };
 
   p.windowResized = function () {
