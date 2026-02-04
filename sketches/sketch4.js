@@ -1,5 +1,7 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 12: add seconds pulse dot (clear seconds encoding, fixed to time not heading)
+// Commit 13: add click-to-toggle legend (time pill always visible)
+// - Clicking the canvas (not the button) toggles a legend overlay
+// - Digital time pill is ALWAYS on (never gated by legend)
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -9,6 +11,9 @@ registerSketch('sk4', function (p) {
   let headingDeg = 0;
   let hasOrientation = false;
   let useMouseFallback = true;
+
+  // ====== Commit 13: legend toggle state ======
+  let showLegend = false;
 
   // ====== Orientation button ======
   let orientButton = {
@@ -124,7 +129,7 @@ registerSketch('sk4', function (p) {
     p.text(orientButton.label, orientButton.x + orientButton.w / 2, orientButton.y + orientButton.h / 2);
   }
 
-  // ====== Shell + markers ======
+  // ====== Shell + marker ======
   function drawOuterShell(cx, cy, r) {
     p.noStroke();
     p.fill(255, 255, 255, 220);
@@ -208,7 +213,7 @@ registerSketch('sk4', function (p) {
     }
   }
 
-  // ====== Hand math (0 radians = up) ======
+  // ====== Hands ======
   function hourToAngle(h24, m) {
     const h12 = h24 % 12;
     return p.TWO_PI * ((h12 + m / 60) / 12);
@@ -248,7 +253,7 @@ registerSketch('sk4', function (p) {
     p.circle(cx, cy, r * 0.05);
   }
 
-  // ====== Commit 12: Seconds pulse dot ======
+  // ====== Seconds pulse ======
   function drawSecondsPulse(cx, cy, r, s) {
     const ang = p.map(s, 0, 60, 0, p.TWO_PI);
     const pulse = 0.6 + 0.4 * Math.sin(p.frameCount * 0.3);
@@ -260,6 +265,44 @@ registerSketch('sk4', function (p) {
     p.noStroke();
     p.fill(220, 60, 60, 210);
     p.circle(x, y, size);
+  }
+
+  // ====== Commit 13: Legend overlay ======
+  function drawLegendOverlay() {
+    const boxW = p.width * 0.78;
+    const boxH = p.height * 0.22;
+    const x = (p.width - boxW) / 2;
+    const y = p.height * 0.72;
+
+    p.noStroke();
+    p.fill(0, 0, 0, 110);
+    p.rect(x, y, boxW, boxH, 16);
+
+    p.fill(255);
+    p.textAlign(p.LEFT, p.TOP);
+    p.textSize(14);
+
+    const lines = [
+      "Legend (click anywhere to hide)",
+      "• Red top triangle: fixed index (where North is read on the compass)",
+      "• Rotating N/E/S/W ring: your device heading (or mouse fallback)",
+      "• Blue hour/minute hands: real current time (independent of heading)",
+      "• Red pulsing dot: seconds"
+    ];
+
+    const padding = 14;
+    let ty = y + padding;
+    for (let i = 0; i < lines.length; i++) {
+      p.text(lines[i], x + padding, ty);
+      ty += 22;
+    }
+  }
+
+  function drawLegendHint() {
+    p.fill(0, 0, 0, 120);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(12);
+    p.text("Click anywhere to toggle legend", p.width / 2, p.height * 0.93);
   }
 
   p.setup = function () {
@@ -277,7 +320,14 @@ registerSketch('sk4', function (p) {
     const insideButton =
       (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
        p.mouseY >= orientButton.y && p.mouseY <= orientButton.y + orientButton.h);
-    if (insideButton) requestOrientationPermission();
+
+    if (insideButton) {
+      requestOrientationPermission();
+      return;
+    }
+
+    // Commit 13: toggle legend when clicking elsewhere
+    showLegend = !showLegend;
   };
 
   p.draw = function () {
@@ -292,7 +342,9 @@ registerSketch('sk4', function (p) {
     const m = p.minute();
     const s = p.second();
 
+    // Digital time pill is ALWAYS visible (commit requirement)
     drawDigitalTimePill(formatTime12(h, m, s));
+
     drawHeadingStatusLine();
     drawOrientationButton();
 
@@ -309,6 +361,9 @@ registerSketch('sk4', function (p) {
     drawMinuteHand(cx, cy, r, m, s);
     drawSecondsPulse(cx, cy, r, s);
     drawCenterCap(cx, cy, r);
+
+    drawLegendHint();
+    if (showLegend) drawLegendOverlay();
   };
 
   p.windowResized = function () {
