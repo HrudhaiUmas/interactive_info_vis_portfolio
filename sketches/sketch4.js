@@ -1,6 +1,5 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 11: add hour + minute hands with correct "hand points up" angles + center cap
-// IMPORTANT: These hands do NOT rotate with heading; only the compass ring rotates.
+// Commit 12: add seconds pulse dot (clear seconds encoding, fixed to time not heading)
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -35,18 +34,15 @@ registerSketch('sk4', function (p) {
   function formatTime12(h24, m, s) {
     let suffix = "AM";
     let h = h24;
-
     if (h >= 12) suffix = "PM";
     h = h % 12;
     if (h === 0) h = 12;
-
     return h + ":" + pad2(m) + ":" + pad2(s) + " " + suffix;
   }
 
   function drawDigitalTimePill(timeStr) {
     const pillW = p.width * 0.72;
     const pillH = 52;
-
     const x = (p.width - pillW) / 2;
     const y = p.height * 0.07;
 
@@ -64,11 +60,9 @@ registerSketch('sk4', function (p) {
     p.fill(0, 0, 0, 110);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(12);
-
     const status = hasOrientation
       ? ("Heading: " + Math.round(headingDeg) + "°")
       : ("Heading: " + Math.round(headingDeg) + "° (fallback)");
-
     p.text(status, p.width / 2, p.height * 0.16);
   }
 
@@ -92,7 +86,6 @@ registerSketch('sk4', function (p) {
       orientButton.label = "No orientation sensor";
       return;
     }
-
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
       DeviceOrientationEvent.requestPermission()
         .then(function (response) {
@@ -131,15 +124,13 @@ registerSketch('sk4', function (p) {
     p.text(orientButton.label, orientButton.x + orientButton.w / 2, orientButton.y + orientButton.h / 2);
   }
 
-  // ====== Shell + marker ======
+  // ====== Shell + markers ======
   function drawOuterShell(cx, cy, r) {
     p.noStroke();
     p.fill(255, 255, 255, 220);
     p.circle(cx, cy, r * 2.18);
-
     p.fill(0, 0, 0, 40);
     p.circle(cx, cy, r * 2.08);
-
     p.fill(255, 255, 255, 215);
     p.circle(cx, cy, r * 1.82);
   }
@@ -147,7 +138,6 @@ registerSketch('sk4', function (p) {
   function drawFixedTopIndex(cx, cy, r) {
     p.noStroke();
     p.fill(220, 60, 60, 220);
-
     p.triangle(
       cx, cy - r * 1.02,
       cx - r * 0.05, cy - r * 0.88,
@@ -155,7 +145,7 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Compass ring rotates with heading ======
+  // ====== Compass ring (rotates with heading) ======
   function drawCompassRingRotating(cx, cy, r) {
     p.push();
     p.translate(cx, cy);
@@ -163,32 +153,27 @@ registerSketch('sk4', function (p) {
 
     p.stroke(0, 0, 0, 60);
     p.strokeWeight(2);
-
     for (let a = 0; a < 360; a += 15) {
       const ang = p.radians(a) - p.HALF_PI;
-
       const isCardinal = (a % 90 === 0);
       const outerR = r * 0.92;
       const innerR = isCardinal ? r * 0.80 : r * 0.84;
-
-      const x1 = outerR * Math.cos(ang);
-      const y1 = outerR * Math.sin(ang);
-      const x2 = innerR * Math.cos(ang);
-      const y2 = innerR * Math.sin(ang);
-
-      p.line(x1, y1, x2, y2);
+      p.line(
+        outerR * Math.cos(ang),
+        outerR * Math.sin(ang),
+        innerR * Math.cos(ang),
+        innerR * Math.sin(ang)
+      );
     }
 
     p.noStroke();
     p.fill(25);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(Math.max(18, r * 0.12));
-
     p.text("N", 0, -r * 0.95);
     p.text("E", r * 0.95, 0);
     p.text("S", 0, r * 0.95);
     p.text("W", -r * 0.95, 0);
-
     p.pop();
   }
 
@@ -196,96 +181,85 @@ registerSketch('sk4', function (p) {
   function drawFixedClockDial(cx, cy, r) {
     p.stroke(0, 0, 0, 55);
     p.strokeWeight(2);
-
     for (let i = 0; i < 60; i++) {
       const ang = p.radians(i * 6) - p.HALF_PI;
-
       const isMajor = (i % 5 === 0);
       const outerR = r * 0.72;
       const innerR = isMajor ? r * 0.60 : r * 0.66;
-
-      const x1 = cx + outerR * Math.cos(ang);
-      const y1 = cy + outerR * Math.sin(ang);
-      const x2 = cx + innerR * Math.cos(ang);
-      const y2 = cy + innerR * Math.sin(ang);
-
-      p.line(x1, y1, x2, y2);
+      p.line(
+        cx + outerR * Math.cos(ang),
+        cy + outerR * Math.sin(ang),
+        cx + innerR * Math.cos(ang),
+        cy + innerR * Math.sin(ang)
+      );
     }
 
     p.noStroke();
     p.fill(0, 0, 0, 130);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(Math.max(12, r * 0.08));
-
     for (let hr = 1; hr <= 12; hr++) {
       const ang = p.map(hr % 12, 0, 12, -p.HALF_PI, p.TWO_PI - p.HALF_PI);
-      const x = cx + (r * 0.50) * Math.cos(ang);
-      const y = cy + (r * 0.50) * Math.sin(ang);
-      p.text(String(hr), x, y);
+      p.text(
+        String(hr),
+        cx + (r * 0.50) * Math.cos(ang),
+        cy + (r * 0.50) * Math.sin(ang)
+      );
     }
   }
 
-  // ====== Commit 11: Hand angles (hand points UP at angle=0) ======
+  // ====== Hand math (0 radians = up) ======
   function hourToAngle(h24, m) {
     const h12 = h24 % 12;
-    const hourFloat = h12 + (m / 60);
-    // angle 0 means "up" for our hand shape
-    return p.TWO_PI * (hourFloat / 12);
+    return p.TWO_PI * ((h12 + m / 60) / 12);
   }
 
   function minuteToAngle(minuteFloat) {
-    // angle 0 means "up"
     return p.TWO_PI * (minuteFloat / 60);
   }
 
-  // ====== Commit 11: Draw hour hand ======
   function drawHourHand(cx, cy, r, h24, m) {
     const ang = hourToAngle(h24, m);
-
     p.push();
     p.translate(cx, cy);
     p.rotate(ang);
-
-    // shadow (tiny offset)
     p.noStroke();
-    p.fill(0, 0, 0, 18);
-    p.rect(-3 + 2, -r * 0.42 + 2, 6, r * 0.42, 4);
-
-    // main hand
     p.fill(35, 70, 140, 240);
     p.rect(-3, -r * 0.44, 6, r * 0.44, 4);
-
     p.pop();
   }
 
-  // ====== Commit 11: Draw minute hand ======
   function drawMinuteHand(cx, cy, r, m, s) {
-    const minuteFloat = m + (s / 60);
-    const ang = minuteToAngle(minuteFloat);
-
+    const ang = minuteToAngle(m + s / 60);
     p.push();
     p.translate(cx, cy);
     p.rotate(ang);
-
-    // shadow
     p.noStroke();
-    p.fill(0, 0, 0, 15);
-    p.rect(-2 + 2, -r * 0.62 + 2, 4, r * 0.62, 3);
-
-    // main hand
     p.fill(35, 70, 140, 230);
     p.rect(-2, -r * 0.64, 4, r * 0.64, 3);
-
     p.pop();
   }
 
-  // ====== Commit 11: Center cap ======
   function drawCenterCap(cx, cy, r) {
     p.noStroke();
     p.fill(25);
     p.circle(cx, cy, r * 0.10);
     p.fill(255, 255, 255, 220);
     p.circle(cx, cy, r * 0.05);
+  }
+
+  // ====== Commit 12: Seconds pulse dot ======
+  function drawSecondsPulse(cx, cy, r, s) {
+    const ang = p.map(s, 0, 60, 0, p.TWO_PI);
+    const pulse = 0.6 + 0.4 * Math.sin(p.frameCount * 0.3);
+    const size = r * 0.04 + pulse * r * 0.02;
+
+    const x = cx + (r * 0.38) * Math.sin(ang);
+    const y = cy - (r * 0.38) * Math.cos(ang);
+
+    p.noStroke();
+    p.fill(220, 60, 60, 210);
+    p.circle(x, y, size);
   }
 
   p.setup = function () {
@@ -303,18 +277,14 @@ registerSketch('sk4', function (p) {
     const insideButton =
       (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
        p.mouseY >= orientButton.y && p.mouseY <= orientButton.y + orientButton.h);
-
-    if (insideButton) {
-      requestOrientationPermission();
-    }
+    if (insideButton) requestOrientationPermission();
   };
 
   p.draw = function () {
     p.background(210, 220, 230);
 
     if (useMouseFallback) {
-      const t = p.constrain(p.mouseX / p.width, 0, 1);
-      headingDeg = 360 * t;
+      headingDeg = 360 * p.constrain(p.mouseX / p.width, 0, 1);
       hasOrientation = false;
     }
 
@@ -332,16 +302,12 @@ registerSketch('sk4', function (p) {
 
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
-
-    // Compass ring rotates with heading
     drawCompassRingRotating(cx, cy, r);
-
-    // Clock dial is fixed
     drawFixedClockDial(cx, cy, r);
 
-    // Commit 11: hour + minute hands (correct time, NOT tied to compass rotation)
     drawHourHand(cx, cy, r, h, m);
     drawMinuteHand(cx, cy, r, m, s);
+    drawSecondsPulse(cx, cy, r, s);
     drawCenterCap(cx, cy, r);
   };
 
