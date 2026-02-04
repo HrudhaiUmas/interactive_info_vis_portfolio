@@ -1,18 +1,17 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 8: add orientation permission button (iOS support) + click handling
-// NOTE: sensor is NOT wired to heading yet (that is commit 9).
-// For now, heading still uses mouse fallback unless we later enable sensor input.
+// Commit 9: wire deviceorientation to headingDeg (live sensor input when available)
+// If sensor works -> hasOrientation true and mouse fallback turns off automatically.
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
-  // ====== Heading state (mouse fallback for now) ======
+  // ====== Heading state ======
   let headingDeg = 0;            // 0 = North
-  let hasOrientation = false;    // still false in this commit (sensor not wired yet)
-  let useMouseFallback = true;   // still true in this commit
+  let hasOrientation = false;    // becomes true when sensor values are received
+  let useMouseFallback = true;   // desktop fallback; turns off when sensor input arrives
 
-  // ====== Commit 8: orientation button state ======
+  // ====== Orientation button state ======
   let orientButton = {
     x: 16,
     y: 16,
@@ -74,35 +73,57 @@ registerSketch('sk4', function (p) {
     p.text(status, p.width / 2, p.height * 0.16);
   }
 
-  // ====== Commit 8: permission request (iOS needs user gesture) ======
+  // ====== Commit 9: Orientation helpers ======
+  function normalizeDeg(d) {
+    let v = d % 360;
+    if (v < 0) v += 360;
+    return v;
+  }
+
+  function handleDeviceOrientation(event) {
+    // Most browsers provide event.alpha in degrees (0..360)
+    if (event && typeof event.alpha === "number") {
+      headingDeg = normalizeDeg(event.alpha);
+      hasOrientation = true;
+
+      // Once we get real sensor values, stop using the mouse fallback
+      useMouseFallback = false;
+    }
+  }
+
+  // ====== Permission request (iOS needs user gesture) ======
   function requestOrientationPermission() {
-    // If the API doesn't exist, we can't request sensors
     if (typeof DeviceOrientationEvent === "undefined") {
       orientButton.label = "No orientation sensor";
       return;
     }
 
-    // iOS 13+ requires explicit permission request
+    // iOS 13+ requires permission request
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
       DeviceOrientationEvent.requestPermission()
         .then(function (response) {
           if (response === "granted") {
-            // We will wire the actual event listener in commit 9.
-            orientButton.label = "Permission granted";
+            window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+            orientButton.label = "Orientation enabled";
           } else {
             orientButton.label = "Permission denied";
+            hasOrientation = false;
+            useMouseFallback = true;
           }
         })
         .catch(function () {
           orientButton.label = "Permission blocked";
+          hasOrientation = false;
+          useMouseFallback = true;
         });
     } else {
-      // Non-iOS browsers typically don't need a permission request
-      orientButton.label = "Permission not needed";
+      // Non-iOS browsers generally allow it without a permission prompt
+      window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+      orientButton.label = "Orientation enabled";
     }
   }
 
-  // ====== Commit 8: draw the in-canvas button ======
+  // ====== Draw the in-canvas button ======
   function drawOrientationButton() {
     orientButton.isHover =
       (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
@@ -143,10 +164,12 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Rotating compass ring (still driven by headingDeg) ======
+  // ====== Rotating compass ring (now can rotate from sensor OR mouse) ======
   function drawCompassRingRotating(cx, cy, r) {
     p.push();
     p.translate(cx, cy);
+
+    // real compass card behavior: rotate opposite heading
     p.rotate(p.radians(-headingDeg));
 
     p.stroke(0, 0, 0, 60);
@@ -184,9 +207,14 @@ registerSketch('sk4', function (p) {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
     p.textAlign(p.CENTER, p.CENTER);
+
+    // For non-iOS browsers, we can attach immediately (no permission API)
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission !== "function") {
+      window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+    }
   };
 
-  // Commit 8: click handling for the button
   p.mousePressed = function () {
     const insideButton =
       (p.mouseX >= orientButton.x && p.mouseX <= orientButton.x + orientButton.w &&
@@ -200,10 +228,11 @@ registerSketch('sk4', function (p) {
   p.draw = function () {
     p.background(210, 220, 230);
 
-    // Mouse fallback heading (still the only driver in commit 8)
+    // Mouse fallback only if we do NOT have sensor input
     if (useMouseFallback) {
       const t = p.constrain(p.mouseX / p.width, 0, 1);
       headingDeg = 360 * t;
+      hasOrientation = false;
     }
 
     const h = p.hour();
@@ -212,8 +241,6 @@ registerSketch('sk4', function (p) {
 
     drawDigitalTimePill(formatTime12(h, m, s));
     drawHeadingStatusLine();
-
-    // Commit 8: draw button
     drawOrientationButton();
 
     const cx = p.width / 2;
@@ -223,6 +250,7 @@ registerSketch('sk4', function (p) {
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
 
+    // Commit 9: headingDeg now can come from live orientation
     drawCompassRingRotating(cx, cy, r);
   };
 
