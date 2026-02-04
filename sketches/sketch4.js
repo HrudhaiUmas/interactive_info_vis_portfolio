@@ -1,5 +1,6 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 10: add fixed clock dial (ticks + hour numbers) that does NOT rotate
+// Commit 11: add hour + minute hands with correct "hand points up" angles + center cap
+// IMPORTANT: These hands do NOT rotate with heading; only the compass ring rotates.
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -130,7 +131,7 @@ registerSketch('sk4', function (p) {
     p.text(orientButton.label, orientButton.x + orientButton.w / 2, orientButton.y + orientButton.h / 2);
   }
 
-  // ====== Compass shell ======
+  // ====== Shell + marker ======
   function drawOuterShell(cx, cy, r) {
     p.noStroke();
     p.fill(255, 255, 255, 220);
@@ -154,7 +155,7 @@ registerSketch('sk4', function (p) {
     );
   }
 
-  // ====== Rotating compass ring ======
+  // ====== Compass ring rotates with heading ======
   function drawCompassRingRotating(cx, cy, r) {
     p.push();
     p.translate(cx, cy);
@@ -191,14 +192,13 @@ registerSketch('sk4', function (p) {
     p.pop();
   }
 
-  // ====== Commit 10: Fixed clock dial (does NOT rotate) ======
+  // ====== Fixed clock dial ======
   function drawFixedClockDial(cx, cy, r) {
-    // 60 tick marks: major every 5, minor otherwise
     p.stroke(0, 0, 0, 55);
     p.strokeWeight(2);
 
     for (let i = 0; i < 60; i++) {
-      const ang = p.radians(i * 6) - p.HALF_PI; // place tick around circle
+      const ang = p.radians(i * 6) - p.HALF_PI;
 
       const isMajor = (i % 5 === 0);
       const outerR = r * 0.72;
@@ -212,7 +212,6 @@ registerSketch('sk4', function (p) {
       p.line(x1, y1, x2, y2);
     }
 
-    // Hour numbers 1..12 (fixed)
     p.noStroke();
     p.fill(0, 0, 0, 130);
     p.textAlign(p.CENTER, p.CENTER);
@@ -224,6 +223,69 @@ registerSketch('sk4', function (p) {
       const y = cy + (r * 0.50) * Math.sin(ang);
       p.text(String(hr), x, y);
     }
+  }
+
+  // ====== Commit 11: Hand angles (hand points UP at angle=0) ======
+  function hourToAngle(h24, m) {
+    const h12 = h24 % 12;
+    const hourFloat = h12 + (m / 60);
+    // angle 0 means "up" for our hand shape
+    return p.TWO_PI * (hourFloat / 12);
+  }
+
+  function minuteToAngle(minuteFloat) {
+    // angle 0 means "up"
+    return p.TWO_PI * (minuteFloat / 60);
+  }
+
+  // ====== Commit 11: Draw hour hand ======
+  function drawHourHand(cx, cy, r, h24, m) {
+    const ang = hourToAngle(h24, m);
+
+    p.push();
+    p.translate(cx, cy);
+    p.rotate(ang);
+
+    // shadow (tiny offset)
+    p.noStroke();
+    p.fill(0, 0, 0, 18);
+    p.rect(-3 + 2, -r * 0.42 + 2, 6, r * 0.42, 4);
+
+    // main hand
+    p.fill(35, 70, 140, 240);
+    p.rect(-3, -r * 0.44, 6, r * 0.44, 4);
+
+    p.pop();
+  }
+
+  // ====== Commit 11: Draw minute hand ======
+  function drawMinuteHand(cx, cy, r, m, s) {
+    const minuteFloat = m + (s / 60);
+    const ang = minuteToAngle(minuteFloat);
+
+    p.push();
+    p.translate(cx, cy);
+    p.rotate(ang);
+
+    // shadow
+    p.noStroke();
+    p.fill(0, 0, 0, 15);
+    p.rect(-2 + 2, -r * 0.62 + 2, 4, r * 0.62, 3);
+
+    // main hand
+    p.fill(35, 70, 140, 230);
+    p.rect(-2, -r * 0.64, 4, r * 0.64, 3);
+
+    p.pop();
+  }
+
+  // ====== Commit 11: Center cap ======
+  function drawCenterCap(cx, cy, r) {
+    p.noStroke();
+    p.fill(25);
+    p.circle(cx, cy, r * 0.10);
+    p.fill(255, 255, 255, 220);
+    p.circle(cx, cy, r * 0.05);
   }
 
   p.setup = function () {
@@ -250,7 +312,6 @@ registerSketch('sk4', function (p) {
   p.draw = function () {
     p.background(210, 220, 230);
 
-    // Mouse fallback only if no sensor
     if (useMouseFallback) {
       const t = p.constrain(p.mouseX / p.width, 0, 1);
       headingDeg = 360 * t;
@@ -272,11 +333,16 @@ registerSketch('sk4', function (p) {
     drawOuterShell(cx, cy, r);
     drawFixedTopIndex(cx, cy, r);
 
-    // Compass ring rotates
+    // Compass ring rotates with heading
     drawCompassRingRotating(cx, cy, r);
 
-    // Commit 10: clock dial is fixed (does not rotate)
+    // Clock dial is fixed
     drawFixedClockDial(cx, cy, r);
+
+    // Commit 11: hour + minute hands (correct time, NOT tied to compass rotation)
+    drawHourHand(cx, cy, r, h, m);
+    drawMinuteHand(cx, cy, r, m, s);
+    drawCenterCap(cx, cy, r);
   };
 
   p.windowResized = function () {
