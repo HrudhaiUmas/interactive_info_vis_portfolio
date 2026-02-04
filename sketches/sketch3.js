@@ -18,13 +18,27 @@ registerSketch('sk3', function (p) {
     isHover: false
   };
 
+  // Commit 10: schedule data (internal 24h, displayed 12h)
+  const scheduleBlocks = [
+    { start: 0,  end: 7,  label: "Sleep" },
+    { start: 7,  end: 8,  label: "Morning routine" },
+    { start: 8,  end: 10, label: "Study / Deep work" },
+    { start: 10, end: 12, label: "Class / Lecture" },
+    { start: 12, end: 13, label: "Lunch" },
+    { start: 13, end: 17, label: "Work block" },
+    { start: 17, end: 18, label: "Gym / movement" },
+    { start: 18, end: 20, label: "Dinner + friends" },
+    { start: 20, end: 22, label: "Wind down" },
+    { start: 22, end: 24, label: "Sleep prep" }
+  ];
+
   function computeCanvasSize() {
     const w = Math.min(p.windowWidth, MAX_W);
     const h = Math.min(p.windowHeight, MAX_H);
     return { w, h };
   }
 
-  // ====== Commit 9: day/night gradient variants ======
+  // ====== Day/night gradient variants ======
   function drawSkyGradient(dayMode) {
     const steps = 40;
 
@@ -33,7 +47,6 @@ registerSketch('sk3', function (p) {
 
       let r, g, b;
 
-      // Day gradient vs Night gradient
       if (dayMode) {
         r = p.lerp(140, 245, t);
         g = p.lerp(200, 220, t);
@@ -52,7 +65,7 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Commit 3: starfield (now night-only)
+  // Stars (night-only)
   function drawStars(dayMode) {
     if (dayMode) return;
 
@@ -70,7 +83,7 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Commit 4: arc + horizon baseline
+  // Arc + horizon baseline
   function drawArcAndHorizon() {
     const cx = p.width * 0.5;
     const cy = p.height * 0.62;
@@ -92,7 +105,7 @@ registerSketch('sk3', function (p) {
     return { cx, cy, arcW, arcH, topY, horizonY };
   }
 
-  // Commit 5: centered HH:MM:SS time pill
+  // Time pill helpers
   function pad2(n) {
     return (n < 10) ? ("0" + n) : ("" + n);
   }
@@ -127,7 +140,7 @@ registerSketch('sk3', function (p) {
     p.text(formatHMS(h, m, s), centerX, centerY);
   }
 
-  // Sun/moon orbit along arc by time-of-day
+  // Sun/moon orbit
   function getDayFraction() {
     const h = p.hour();
     const m = p.minute();
@@ -147,7 +160,6 @@ registerSketch('sk3', function (p) {
     p.noStroke();
 
     if (dayMode) {
-      // Sun
       p.fill(255, 210, 60);
       p.circle(x, y, 46);
 
@@ -164,7 +176,6 @@ registerSketch('sk3', function (p) {
         p.line(x1, y1, x2, y2);
       }
     } else {
-      // Moon
       p.fill(230, 230, 255);
       p.circle(x, y, 40);
 
@@ -173,7 +184,7 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Geolocation request (triggered by in-canvas button)
+  // Geolocation request
   function requestGeolocation() {
     if (!navigator.geolocation) {
       locationLine = "Location: Geolocation not supported";
@@ -198,29 +209,23 @@ registerSketch('sk3', function (p) {
     );
   }
 
-  // In-canvas button drawing
+  // In-canvas button
   function drawGeoButton(dayMode) {
     geoButton.isHover =
       (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
        p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
 
     p.noStroke();
-    if (geoButton.isHover) p.fill(255, 255, 255, 220);
-    else p.fill(255, 255, 255, 180);
-
+    p.fill(255, 255, 255, geoButton.isHover ? 220 : 180);
     p.rect(geoButton.x, geoButton.y, geoButton.w, geoButton.h, 12);
 
     p.fill(20);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(12);
-    p.text(
-      geoButton.label,
-      geoButton.x + geoButton.w / 2,
-      geoButton.y + geoButton.h / 2
-    );
+    p.text(geoButton.label, geoButton.x + geoButton.w / 2, geoButton.y + geoButton.h / 2);
   }
 
-  // Location pill
+  // Location line
   function drawLocationLine(dayMode) {
     p.noStroke();
     if (dayMode) p.fill(255, 255, 255, 160);
@@ -298,10 +303,7 @@ registerSketch('sk3', function (p) {
       return Math.round(localHoursNorm * 60);
     }
 
-    return {
-      sunriseMinutes: calc(true),
-      sunsetMinutes: calc(false)
-    };
+    return { sunriseMinutes: calc(true), sunsetMinutes: calc(false) };
   }
 
   function formatMinutesTo12h(mins) {
@@ -344,6 +346,75 @@ registerSketch('sk3', function (p) {
     return (currentMinutes >= sunriseMinutes && currentMinutes < sunsetMinutes);
   }
 
+  // ====== Commit 10: tracker layout ======
+  function formatHour12(h24) {
+    let suffix = "AM";
+    let h = h24;
+
+    if (h >= 12) suffix = "PM";
+    h = h % 12;
+    if (h === 0) h = 12;
+
+    return h + " " + suffix;
+  }
+
+  function formatRange12(startH, endH) {
+    return formatHour12(startH) + " – " + formatHour12(endH);
+  }
+
+  function drawSchedulePanel(dayMode) {
+    const panelX = p.width * 0.08;
+    const panelY = p.height * 0.70;
+    const panelW = p.width * 0.84;
+    const panelH = p.height * 0.28;
+
+    // Panel background
+    p.noStroke();
+    if (dayMode) p.fill(255, 255, 255, 170);
+    else p.fill(0, 0, 0, 160);
+
+    p.rect(panelX, panelY, panelW, panelH, 16);
+
+    // Title
+    p.fill(dayMode ? 30 : 255);
+    p.textAlign(p.LEFT, p.TOP);
+    p.textSize(18);
+    p.text("Today’s tracker", panelX + 14, panelY + 12);
+
+    // Inner layout
+    const innerX = panelX + 14;
+    const innerY = panelY + 44;
+    const innerW = panelW - 28;
+    const innerH = panelH - 58;
+
+    const minRowH = 22;
+    const rowH = Math.max(minRowH, innerH / scheduleBlocks.length);
+
+    // Rows
+    for (let i = 0; i < scheduleBlocks.length; i++) {
+      const b = scheduleBlocks[i];
+      const y = innerY + i * rowH;
+
+      if (y + rowH > panelY + panelH - 10) break;
+
+      // light divider line
+      p.noStroke();
+      p.fill(dayMode ? 0 : 255, dayMode ? 0 : 255, dayMode ? 0 : 255, 35);
+      p.rect(innerX, y + rowH - 2, innerW, 1);
+
+      // time range column
+      p.fill(dayMode ? 30 : 255);
+      p.textAlign(p.LEFT, p.CENTER);
+      p.textSize(14);
+      p.text(formatRange12(b.start, b.end), innerX + 10, y + rowH / 2);
+
+      // label column
+      p.textAlign(p.LEFT, p.CENTER);
+      p.textSize(14);
+      p.text("• " + b.label, innerX + 170, y + rowH / 2);
+    }
+  }
+
   p.setup = function () {
     const s = computeCanvasSize();
     p.createCanvas(s.w, s.h);
@@ -361,8 +432,6 @@ registerSketch('sk3', function (p) {
   p.draw = function () {
     const now = new Date();
     const sunTimes = computeSunriseSunsetMinutes(userLat, userLon, now);
-
-    // Commit 9: real day/night mode based on sunrise/sunset
     const dayMode = computeDayModeFromSunTimes(sunTimes.sunriseMinutes, sunTimes.sunsetMinutes);
 
     drawSkyGradient(dayMode);
@@ -377,6 +446,9 @@ registerSketch('sk3', function (p) {
     drawLocationLine(dayMode);
 
     drawSunInfoLine(geom, sunTimes.sunriseMinutes, sunTimes.sunsetMinutes, dayMode);
+
+    // Commit 10: tracker layout panel
+    drawSchedulePanel(dayMode);
   };
 
   p.windowResized = function () {
