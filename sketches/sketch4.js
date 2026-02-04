@@ -1,5 +1,5 @@
 // Instance-mode sketch for tab 4 (Clock C – Compass Clock)
-// Commit 3: draw compass shell (bezel + face)
+// Commit 4: add fixed top index marker
 
 registerSketch('sk4', function (p) {
   const MAX_W = 800;
@@ -44,20 +44,31 @@ registerSketch('sk4', function (p) {
     p.text(timeStr, p.width / 2, y + pillH / 2);
   }
 
-  // ====== Commit 3: Compass shell ======
+  // ====== Compass shell ======
   function drawOuterShell(cx, cy, r) {
-    // Outer bezel
     p.noStroke();
     p.fill(255, 255, 255, 220);
     p.circle(cx, cy, r * 2.18);
 
-    // Soft shadow ring
     p.fill(0, 0, 0, 40);
     p.circle(cx, cy, r * 2.08);
 
-    // Inner face
     p.fill(255, 255, 255, 215);
     p.circle(cx, cy, r * 1.82);
+  }
+
+  // ====== Commit 4: Fixed top index marker ======
+  function drawFixedTopIndex(cx, cy, r) {
+    // This is a "housing marker" that stays fixed on the screen.
+    // Later, the compass ring will rotate underneath it.
+    p.noStroke();
+    p.fill(220, 60, 60, 220);
+
+    p.triangle(
+      cx, cy - r * 1.02,              // tip (top)
+      cx - r * 0.05, cy - r * 0.88,   // bottom-left
+      cx + r * 0.05, cy - r * 0.88    // bottom-right
+    );
   }
 
   p.setup = function () {
@@ -67,24 +78,22 @@ registerSketch('sk4', function (p) {
   };
 
   p.draw = function () {
-    // background
     p.background(210, 220, 230);
 
-    // current time
     const h = p.hour();
     const m = p.minute();
     const s = p.second();
 
-    // time pill
     drawDigitalTimePill(formatTime12(h, m, s));
 
-    // compass layout
     const cx = p.width / 2;
     const cy = p.height * 0.56;
     const r = Math.min(p.width, p.height) * 0.28;
 
-    // shell
     drawOuterShell(cx, cy, r);
+
+    // Commit 4: fixed index marker
+    drawFixedTopIndex(cx, cy, r);
   };
 
   p.windowResized = function () {
