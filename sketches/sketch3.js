@@ -3,6 +3,21 @@ registerSketch('sk3', function (p) {
   const MAX_W = 800;
   const MAX_H = 800;
 
+  // Geolocation state
+  let userLat = 47.6062;     // fallback
+  let userLon = -122.3321;   // fallback
+  let locationLine = "Location: (click Enable Location)";
+
+  // In-canvas button state
+  let geoButton = {
+    x: 16,
+    y: 16,
+    w: 150,
+    h: 34,
+    label: "Enable Location",
+    isHover: false
+  };
+
   function computeCanvasSize() {
     const w = Math.min(p.windowWidth, MAX_W);
     const h = Math.min(p.windowHeight, MAX_H);
@@ -106,19 +121,16 @@ registerSketch('sk3', function (p) {
     const s = p.second();
 
     const totalSeconds = (h * 3600) + (m * 60) + s;
-    return totalSeconds / (24 * 3600); // 0..1
+    return totalSeconds / (24 * 3600);
   }
 
   function isDaytimeSimple() {
-    // Temporary simple rule (we will replace with real sunrise/sunset later)
     const h = p.hour();
     return (h >= 6 && h < 18);
   }
 
   function drawSunOrMoon(geom) {
     const dayFraction = getDayFraction();
-
-    // Map 0..1 dayFraction onto arc angles PI..TWO_PI
     const angle = p.lerp(p.PI, p.TWO_PI, dayFraction);
 
     const x = geom.cx + (geom.arcW / 2) * Math.cos(angle);
@@ -129,11 +141,9 @@ registerSketch('sk3', function (p) {
     p.noStroke();
 
     if (dayMode) {
-      // Sun
       p.fill(255, 210, 60);
       p.circle(x, y, 46);
 
-      // Rays (slight motion so it feels alive)
       p.stroke(255, 210, 60, 150);
       p.strokeWeight(2);
 
@@ -147,14 +157,74 @@ registerSketch('sk3', function (p) {
         p.line(x1, y1, x2, y2);
       }
     } else {
-      // Moon (crescent)
       p.fill(230, 230, 255);
       p.circle(x, y, 40);
 
-      // Cut-out to form crescent
       p.fill(15, 25, 55);
       p.circle(x + 10, y - 5, 36);
     }
+  }
+
+  // Geolocation request (triggered by in-canvas button)
+  function requestGeolocation() {
+    if (!navigator.geolocation) {
+      locationLine = "Location: Geolocation not supported";
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
+
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown TZ";
+        locationLine =
+          "Location: " + tz +
+          "  •  lat " + userLat.toFixed(2) +
+          ", lon " + userLon.toFixed(2);
+      },
+      function () {
+        locationLine = "Location: permission denied (using fallback)";
+      },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+    );
+  }
+
+  // In-canvas button drawing
+  function drawGeoButton() {
+    // Hover detection
+    geoButton.isHover =
+      (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
+       p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
+
+    // Button background
+    p.noStroke();
+    if (geoButton.isHover) p.fill(255, 255, 255, 220);
+    else p.fill(255, 255, 255, 180);
+
+    p.rect(geoButton.x, geoButton.y, geoButton.w, geoButton.h, 12);
+
+    // Button text
+    p.fill(20);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(12);
+    p.text(
+      geoButton.label,
+      geoButton.x + geoButton.w / 2,
+      geoButton.y + geoButton.h / 2
+    );
+  }
+
+  // Location pill
+  function drawLocationLine() {
+    p.noStroke();
+    p.fill(0, 0, 0, 140);
+    p.rect(12, 60, 520, 26, 10);
+
+    p.fill(255);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.textSize(12);
+    p.text(locationLine, 22, 73);
   }
 
   p.setup = function () {
@@ -163,17 +233,29 @@ registerSketch('sk3', function (p) {
     p.textAlign(p.CENTER, p.CENTER);
   };
 
+  // Click handler for in-canvas button
+  p.mousePressed = function () {
+    const inside =
+      (p.mouseX >= geoButton.x && p.mouseX <= geoButton.x + geoButton.w &&
+       p.mouseY >= geoButton.y && p.mouseY <= geoButton.y + geoButton.h);
+
+    if (inside) {
+      requestGeolocation();
+    }
+  };
+
   p.draw = function () {
     drawSkyGradient();
     drawStars();
 
     const geom = drawArcAndHorizon();
 
-    // New feature: sun/moon moving along arc
     drawSunOrMoon(geom);
-
-    // Time pill on top
     drawCenteredTimePill(geom);
+
+    // New: in-canvas button + location line
+    drawGeoButton();
+    drawLocationLine();
   };
 
   p.windowResized = function () {
