@@ -28,24 +28,43 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Commit 3: starfield layer
+  // Commit 3: starfield
   function drawStars() {
-    // Deterministic placement (stable) + mild twinkle (feels alive)
     p.noStroke();
-
     const starCount = 70;
 
     for (let i = 0; i < starCount; i++) {
-      // Stable pseudo-random positions
       const x = (i * 97) % p.width;
       const y = (i * 53) % Math.floor(p.height * 0.65);
 
-      // Twinkle alpha changes smoothly over time
       const twinkle = 160 + 80 * Math.sin((p.frameCount * 0.03) + i);
 
       p.fill(255, 255, 255, twinkle);
       p.circle(x, y, 2);
     }
+  }
+
+  // Commit 4: arc + horizon baseline
+  function drawArcAndHorizon() {
+    // Arc geometry (kept consistent so future features align)
+    const cx = p.width * 0.5;
+    const cy = p.height * 0.62;
+    const arcW = p.width * 0.78;
+    const arcH = p.height * 0.78;
+
+    // Arc (left horizon -> right horizon)
+    p.noFill();
+    p.stroke(255, 255, 255, 130);
+    p.strokeWeight(3);
+    p.arc(cx, cy, arcW, arcH, p.PI, p.TWO_PI);
+
+    // Horizon line
+    p.stroke(0, 0, 0, 60);
+    p.strokeWeight(2);
+    p.line(p.width * 0.12, cy, p.width * 0.88, cy);
+
+    // Return geometry so later commits can position elements precisely
+    return { cx, cy, arcW, arcH };
   }
 
   p.setup = function () {
@@ -60,9 +79,12 @@ registerSketch('sk3', function (p) {
     drawSkyGradient();
     drawStars();
 
-    // Placeholder label
+    const geom = drawArcAndHorizon();
+
+    // Placeholder label so you know it's running
+    p.noStroke();
     p.fill(255);
-    p.text("Clock B (sk3) — stars added", p.width / 2, p.height / 2);
+    p.text("Clock B (sk3) — arc + horizon", geom.cx, p.height * 0.18);
   };
 
   p.windowResized = function () {
