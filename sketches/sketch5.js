@@ -3,8 +3,9 @@
 //
 // Static story (IG screenshot-ready):
 // - Small multiples (2x2) with consistent scales
-// - Reference lines labeled (50% + starter cutoff)
-// - Clear hierarchy: title → definition → takeaway → panels → footer
+// - Clear legend (includes steep vs flat meaning + starter cutoff meaning)
+// - Direct labels for 50% line + starter cutoff line
+// - Per-panel tag: Star-driven / Depth-driven / Balanced
 //
 // Light interaction (meets “one-level” interactivity expectation):
 // - Hover a panel to see player name, rank, fantasy points, and cumulative share.
@@ -34,6 +35,14 @@ registerSketch("sk5", function (p) {
   // Update these once you confirm scoring + source
   const SCORING_LABEL = "Scoring: as provided in dataset";
   const SOURCE_LABEL = "Source: 2025 season totals dataset (see write-up)";
+
+  // ---------- Position labels + “type” tags ----------
+  const POS_INFO = {
+    RB: { title: "Running Back (RB)", tag: "Star-driven", tagNote: "" },
+    WR: { title: "Wide Receiver (WR)", tag: "Depth-driven", tagNote: "" },
+    QB: { title: "Quarterback (QB)", tag: "Balanced", tagNote: "stars matter, depth helps" },
+    TE: { title: "Tight End (TE)", tag: "Star-driven", tagNote: "" }
+  };
 
   // ---------- Color accents (subtle, not distracting) ----------
   const ACCENT = {
@@ -80,8 +89,8 @@ registerSketch("sk5", function (p) {
     y: cardPad + 22
   };
 
-  // Header height (leave room for definition + takeaway)
-  const HEADER_BOTTOM_Y = cardPad + 356;
+  // Header height (leave room for takeaway + legend)
+  const HEADER_BOTTOM_Y = cardPad + 392;
 
   let panelGrid = {
     x: cardPad + 36,
@@ -246,10 +255,11 @@ registerSketch("sk5", function (p) {
   }
 
   function plotBounds(panel) {
-    // Top padding creates an annotation band so text never overlaps the curve
+    // FIX #1 (y-axis overlap): give a larger left gutter so
+    // the rotated y-label and % ticks never collide.
     return {
-      left: panel.x + 56,
-      right: panel.x + panel.w - 18,
+      left: panel.x + 92,
+      right: panel.x + panel.w - 22,
       top: panel.y + 98,
       bottom: panel.y + panel.h - 48
     };
@@ -280,7 +290,6 @@ registerSketch("sk5", function (p) {
 
   // ---------- Drawing ----------
   function drawCard() {
-    // Slightly warmer background so it doesn’t feel stark
     p.background(248);
 
     // Soft shadow
@@ -296,7 +305,7 @@ registerSketch("sk5", function (p) {
   function drawTakeawayBox(x, y, w, lines) {
     const pad = 14;
     const lineH = 20;
-    const h = pad * 2 + lines.length * lineH;
+    const h = pad * 2 + lines.length * lineH + 8;
 
     p.noStroke();
     p.fill(250);
@@ -319,45 +328,170 @@ registerSketch("sk5", function (p) {
     p.textSize(14);
 
     for (let i = 0; i < lines.length; i++) {
-      const yy = y + pad + 18 + i * lineH;
+      const yy = y + pad + 20 + i * lineH;
       p.text("• " + lines[i], x + pad, yy);
     }
+
+    return h;
+  }
+
+  function drawMiniCurve(x, y, w, h, kind) {
+    // kind: "steep" or "flat"
+    // IMPORTANT: push/pop so stroke does NOT leak into other legend text.
+    p.push();
+
+    p.noFill();
+    p.stroke(130);
+    p.strokeWeight(3);
+
+    p.beginShape();
+    for (let i = 0; i <= 30; i++) {
+      const t = i / 30;
+      let s = t;
+      if (kind === "steep") s = Math.pow(t, 0.55);
+      if (kind === "flat") s = Math.pow(t, 1.65);
+      const px = x + t * w;
+      const py = y + (1 - s) * h;
+      p.vertex(px, py);
+    }
+    p.endShape();
+
+    p.pop();
+  }
+
+  function drawLegendBox(x, y, w) {
+    const pad = 14;
+    const h = 210;
+
+    p.noStroke();
+    p.fill(250);
+    p.rect(x, y, w, h, 14);
+
+    p.stroke(230);
+    p.strokeWeight(1);
+    p.noFill();
+    p.rect(x, y, w, h, 14);
+
+    // Title
+    p.noStroke();
+    p.fill(30);
+    p.textAlign(p.LEFT, p.TOP);
+    p.textStyle(p.BOLD);
+    p.textSize(16);
+    p.text("Legend", x + pad, y + pad - 2);
+
+    // Cumulative share definition
+    p.textStyle(p.NORMAL);
+    p.fill(80);
+    p.textSize(13);
+    p.text(
+      "Cumulative share = % of ALL position points earned by the top N ranks.",
+      x + pad,
+      y + pad + 22
+    );
+
+    // Steep vs flat visuals
+    const curveY = y + pad + 54;
+    const curveW = 120;
+    const curveH = 36;
+
+    // Steep
+    drawMiniCurve(x + pad, curveY, curveW, curveH, "steep");
+    p.noStroke();
+    p.fill(70);
+    p.textSize(12);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text("Steep → star-driven", x + pad + curveW + 10, curveY + 2);
+
+    // Flat
+    const flatX = x + pad;
+    const flatY = curveY + 46;
+    drawMiniCurve(flatX, flatY, curveW, curveH, "flat");
+    p.noStroke();
+    p.fill(70);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text("Flat → depth-driven", flatX + curveW + 10, flatY + 2);
+
+    // Balanced note
+    p.noStroke();
+    p.fill(110);
+    p.textSize(11);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text("In-between curves → balanced", x + pad + curveW + 10, flatY + 18);
+
+    // Marks (right side)
+    // FIX #2 (legend overflow): give the right text block more horizontal room
+    // + shorten the starter-cutoff blurb so it cannot spill outside the box.
+    const rightX = x + Math.floor(w * 0.54);
+    const baseY = y + pad + 54;
+
+    // 50% line sample
+    p.stroke(175);
+    p.strokeWeight(2);
+    drawDashedLine(rightX, baseY + 12, rightX + 62, baseY + 12, 7, 5);
+    p.noStroke();
+    p.fill(80);
+    p.textSize(12);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text("Dashed = 50% line", rightX + 72, baseY + 12);
+
+    // Starter cutoff sample
+    p.stroke(160);
+    p.strokeWeight(2);
+    drawDashedLine(rightX + 30, baseY + 26, rightX + 30, baseY + 58, 7, 5);
+    p.noStroke();
+    p.fill(80);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text("Dashed = starter cutoff", rightX + 72, baseY + 42);
+
+    // Starter tier sample (accent segment)
+    p.stroke(60);
+    p.strokeWeight(5);
+    p.line(rightX, baseY + 74, rightX + 62, baseY + 74);
+    p.noStroke();
+    p.fill(80);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text("Accent = starter tier", rightX + 72, baseY + 74);
+
+    // Starter cutoff meaning (explicit) — short + wrapped so it stays inside the box
+    p.noStroke();
+    p.fill(110);
+    p.textSize(11);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(
+      "Starter cutoff = typical starters (12-team):\nQB/TE top 12, RB/WR top 24.",
+      rightX,
+      baseY + 92
+    );
+
+    return h;
   }
 
   function drawHeader() {
     p.noStroke();
     p.textAlign(p.LEFT, p.TOP);
 
-    // Short + sweet title
+    // Title
     p.fill(20);
     p.textStyle(p.BOLD);
     p.textSize(45);
     p.text("Some Positions Are Star-Driven. Others Reward Depth.", header.x, header.y);
 
+    // Subtitle
     p.textStyle(p.NORMAL);
     p.fill(90);
     p.textSize(20);
     p.text("2025 NFL fantasy • top 60 per position (ranked by total points)", header.x, header.y + 70);
 
-    // Define cumulative share in plain English
-    p.fill(65);
-    p.textSize(18);
-    p.text(
-      "Cumulative share = % of ALL position points earned by the top N players.",
-      header.x,
-      header.y + 104
-    );
+    // Layout: takeaway (left) + legend (right)
+    const fullW = W - cardPad - header.x;
+    const gap = 18;
+    const takeawayW = 520;
+    const legendW = fullW - takeawayW - gap;
 
-    // Replace “concentrated production” wording with something obvious
-    p.fill(65);
-    p.textSize(18);
-    p.text(
-      "Steeper = a few stars score most points. Flatter = points are spread across more players.",
-      header.x,
-      header.y + 132
-    );
+    const boxY = header.y + 112;
 
-    // Takeaway box uses computed values (always matches the data)
+    // Takeaway lines use computed values (always matches your data)
     const rbTop = stats.RB.topK;
     const rbShare = pct1(stats.RB.shareTopK);
     const wrRankHalf = stats.WR.rankHalf;
@@ -367,19 +501,21 @@ registerSketch("sk5", function (p) {
       "WR: you need about rank " + wrRankHalf + " to reach half of WR points."
     ];
 
-    drawTakeawayBox(header.x, header.y + 170, 760, takeawayLines);
+    const takeH = drawTakeawayBox(header.x, boxY, takeawayW, takeawayLines);
+    const legH = drawLegendBox(header.x + takeawayW + gap, boxY, legendW);
 
-    // Minimal note about the dark segment
+    // Hover note
+    const bottomY = boxY + Math.max(takeH, legH) + 12;
     p.fill(120);
     p.textSize(14);
-    p.text(
-      "Accent line = starter tier (QB/TE 12, RB/WR 24). Hover a panel to see a player.",
-      header.x,
-      header.y + 274
-    );
+    p.text("Hover a panel to see player details.", header.x, bottomY);
   }
 
-  function drawPanelBase(panel, pos, title) {
+  function drawPanelBase(panel, pos) {
+    const title = POS_INFO[pos].title;
+    const tag = POS_INFO[pos].tag;
+    const note = POS_INFO[pos].tagNote;
+
     p.noStroke();
     p.fill(252);
     p.rect(panel.x, panel.y, panel.w, panel.h, 18);
@@ -390,7 +526,7 @@ registerSketch("sk5", function (p) {
     p.strokeWeight(2);
     p.rect(panel.x, panel.y, panel.w, panel.h, 18);
 
-    // Accent chip next to title (adds color without chaos)
+    // Accent chip (left)
     p.noStroke();
     p.fill(accent(pos, 255));
     p.rect(panel.x + 18, panel.y + 20, 10, 22, 6);
@@ -401,6 +537,40 @@ registerSketch("sk5", function (p) {
     p.textStyle(p.BOLD);
     p.textSize(22);
     p.text(title, panel.x + 36, panel.y + 14);
+
+    // Tag pill (right)
+    p.textSize(12);
+    const padX = 10;
+    const pillText = tag;
+    const pillW = p.textWidth(pillText) + padX * 2;
+    const pillH = 22;
+
+    const pillX = panel.x + panel.w - 18 - pillW;
+    const pillY = panel.y + 16;
+
+    p.noStroke();
+    p.fill(accent(pos, 28));
+    p.rect(pillX, pillY, pillW, pillH, 999);
+
+    p.stroke(accent(pos, 130));
+    p.strokeWeight(1);
+    p.noFill();
+    p.rect(pillX, pillY, pillW, pillH, 999);
+
+    p.noStroke();
+    p.fill(accent(pos, 255));
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textStyle(p.BOLD);
+    p.text(pillText, pillX + pillW / 2, pillY + pillH / 2 + 0.5);
+
+    // QB extra clarification
+    if (note && note.length > 0) {
+      p.fill(130);
+      p.textStyle(p.NORMAL);
+      p.textAlign(p.RIGHT, p.TOP);
+      p.textSize(11);
+      p.text(note, panel.x + panel.w - 18, panel.y + 42);
+    }
   }
 
   function drawAxes(panel, pos) {
@@ -446,20 +616,29 @@ registerSketch("sk5", function (p) {
       p.text("Rank " + MAX_RANK_SHOWN, b.right, b.bottom + 10);
     }
 
-    // Y labels only on left column
+    // Y tick labels only on left column
     if (panel.col === 0) {
+      // % ticks live in the (now wider) left gutter
+      const tickX = b.left - 12;
+
+      p.noStroke();
       p.fill(120);
       p.textSize(14);
-      p.textAlign(p.LEFT, p.CENTER);
-      p.text("100%", panel.x + 16, mapY(1.0, b));
-      p.text("50%", panel.x + 16, mapY(0.5, b));
-      p.text("0%", panel.x + 16, mapY(0.0, b));
+      p.textAlign(p.RIGHT, p.CENTER);
+      p.text("100%", tickX, mapY(1.0, b));
+      p.text("50%", tickX, mapY(0.5, b));
+      p.text("0%", tickX, mapY(0.0, b));
 
-      // Y-axis descriptor (clear + matches definition)
+      // Rotated y-axis label moved further left (separate from % ticks)
+      p.push();
+      p.translate(panel.x + 18, (b.top + b.bottom) / 2);
+      p.rotate(-p.HALF_PI);
+      p.noStroke();
       p.fill(95);
       p.textSize(13);
-      p.textAlign(p.LEFT, p.TOP);
-      p.text("Cumulative share of position points", panel.x + 16, panel.y + panel.h - 138);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text("Cumulative share of position points", 0, 0);
+      p.pop();
     }
   }
 
@@ -487,7 +666,7 @@ registerSketch("sk5", function (p) {
     p.textSize(12);
     p.text("Starter cutoff", xK + 6, b.top + 6);
 
-    // Horizontal guide to the curve point (helps read the share)
+    // Horizontal guide to the curve point
     p.stroke(205);
     p.strokeWeight(2);
     drawDashedLine(b.left, yK, xK, yK, 8, 6);
@@ -728,19 +907,14 @@ registerSketch("sk5", function (p) {
     drawCard();
     drawHeader();
 
-    const panels = [
-      { pos: "RB", title: "RB (Running backs)" },
-      { pos: "WR", title: "WR (Wide receivers)" },
-      { pos: "QB", title: "QB (Quarterbacks)" },
-      { pos: "TE", title: "TE (Tight ends)" }
-    ];
+    const panels = [{ pos: "RB" }, { pos: "WR" }, { pos: "QB" }, { pos: "TE" }];
 
     // Precompute panel rects so hover can reference them
     let posPanels = [];
     for (let i = 0; i < panels.length; i++) {
       const pos = panels[i].pos;
       const panel = panelForPos(pos);
-      posPanels.push({ pos: pos, panel: panel, title: panels[i].title });
+      posPanels.push({ pos: pos, panel: panel });
     }
 
     // Draw panels
@@ -748,7 +922,7 @@ registerSketch("sk5", function (p) {
       const pos = posPanels[i].pos;
       const panel = posPanels[i].panel;
 
-      drawPanelBase(panel, pos, posPanels[i].title);
+      drawPanelBase(panel, pos);
       drawAxes(panel, pos);
       drawDistribution(panel, pos);
       drawCutoffGuides(panel, pos);
